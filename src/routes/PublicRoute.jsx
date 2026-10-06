@@ -1,12 +1,15 @@
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { getRoleDefaultPath } from '../utils/roleHelper'
 
 export default function PublicRoute({ children }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const user = useAuthStore((state) => state.user)
 
-  // Nếu đã đăng nhập rồi thì không cho vào lại trang login, tự động chuyển về trang chủ
+  // Nếu đã đăng nhập: Chuyển hướng thẳng 1 bước đến trang làm việc theo chức vụ (không qua trung gian '/')
   if (isAuthenticated) {
-    return <Navigate to="/" replace />
+    const targetPath = getRoleDefaultPath(user?.position)
+    return <Navigate to={targetPath} replace />
   }
 
   return children

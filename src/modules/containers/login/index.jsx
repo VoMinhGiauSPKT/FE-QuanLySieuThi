@@ -4,6 +4,7 @@ import { message } from 'antd'
 import LoginDesktop from '../../layout/desktop/login'
 import { loginApi } from '../../../services/authService'
 import { useAuthStore } from '../../../stores/authStore'
+import { getRoleDefaultPath } from '../../../utils/roleHelper'
 
 export default function LoginContainer() {
   const [loading, setLoading] = useState(false)
@@ -12,8 +13,6 @@ export default function LoginContainer() {
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
   const location = useLocation()
-
-  const redirectPath = location.state?.from?.pathname || '/'
 
   const handleFinish = async (values) => {
     setLoading(true)
@@ -30,6 +29,11 @@ export default function LoginContainer() {
         login({ accessToken, employee })
 
         message.success(resData?.message || 'Đăng nhập thành công!')
+
+        // Điều hướng thông minh theo chức vụ của nhân viên
+        const roleDefaultPath = getRoleDefaultPath(employee.position)
+        const redirectPath = location.state?.from?.pathname || roleDefaultPath
+
         navigate(redirectPath, { replace: true })
       } else {
         const failMessage = resData?.message || 'Đăng nhập thất bại, vui lòng kiểm tra lại!'
