@@ -1,162 +1,175 @@
-import { Card, Row, Col, Typography, Statistic, Table, Tag, Button, Space, Tabs } from 'antd'
+import { Tabs, Typography } from 'antd'
 import {
-  DollarOutlined,
-  ShoppingOutlined,
+  DashboardOutlined,
   TeamOutlined,
-  AlertOutlined,
-  UserAddOutlined,
-  ShoppingCartOutlined,
-  InboxOutlined,
+  AppstoreOutlined,
+  FileDoneOutlined,
+  StarOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons'
-import { Link } from 'react-router-dom'
 import DefaultLayout from '../../common/DefaultLayout'
-import { getRoleTagColor } from '../../../../utils/roleHelper'
+import OverviewTab from './components/OverviewTab'
+import EmployeeManagementTab from './components/EmployeeManagementTab'
+import ProductManagementTab from './components/ProductManagementTab'
+import InventoryReportTab from './components/InventoryReportTab'
+import FeedbackReviewTab from './components/FeedbackReviewTab'
+import TransactionHistoryTab from './components/TransactionHistoryTab'
 
 const { Title, Text } = Typography
 
-export default function AdminDesktop({ user, employeeList, onAddEmployee }) {
-  const employeeColumns = [
-    {
-      title: 'Mã NV',
-      dataIndex: 'employeeId',
-      key: 'employeeId',
-      render: (id) => <Text code>{id ? id.substring(0, 8) + '...' : 'N/A'}</Text>,
-    },
-    {
-      title: 'Tài khoản',
-      dataIndex: 'username',
-      key: 'username',
-      render: (u) => <Text strong>{u}</Text>,
-    },
-    {
-      title: 'Họ và Tên',
-      dataIndex: 'fullName',
-      key: 'fullName',
-    },
-    {
-      title: 'Số điện thoại',
-      dataIndex: 'phoneNumber',
-      key: 'phoneNumber',
-    },
-    {
-      title: 'Chức vụ',
-      dataIndex: 'position',
-      key: 'position',
-      render: (pos) => (
-        <Tag color={getRoleTagColor(pos)} style={{ fontWeight: 500 }}>
-          {pos}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => (
-        <Tag color={status ? 'success' : 'error'}>
-          {status ? 'Đang làm việc' : 'Ngừng hoạt động'}
-        </Tag>
-      ),
-    },
-  ]
-
+export default function AdminDesktop({
+  user,
+  activeTab,
+  onTabChange,
+  // Dữ liệu & action cho Overview
+  paymentSummary,
+  lowStockCount,
+  feedbackSummary,
+  pendingReportsCount,
+  // Dữ liệu & action cho Nhân viên
+  employees,
+  loadingEmployees,
+  employeePagination,
+  onEmployeeTableChange,
+  onSearchEmployees,
+  onCreateEmployee,
+  onUpdateEmployee,
+  onDeleteEmployee,
+  onRefreshEmployees,
+  // Dữ liệu & action cho Sản phẩm
+  products,
+  loadingProducts,
+  productPagination,
+  onProductTableChange,
+  onSearchProducts,
+  onUpdateProduct,
+  onRefreshProducts,
+  // Dữ liệu & action cho Báo cáo kiểm kê kho
+  inventoryReports,
+  loadingReports,
+  reportsPagination,
+  onReportsTableChange,
+  onRefreshReports,
+  // Dữ liệu & action cho Đánh giá khách hàng
+  feedbackData,
+  loadingFeedbacks,
+  selectedRating,
+  onRatingChange,
+  onRefreshFeedbacks,
+  // Dữ liệu & action cho Hóa đơn & giao dịch
+  invoices,
+  loadingInvoices,
+  selectedInvoiceStatus,
+  onInvoiceStatusChange,
+  onRefreshInvoices,
+}) {
   const tabItems = [
     {
       key: 'overview',
-      label: 'Tổng Quan Hoạt Động',
+      label: (
+        <span>
+          <DashboardOutlined /> Tổng Quan
+        </span>
+      ),
       children: (
-        <div>
-          <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
-            <Col xs={24} sm={12} lg={6}>
-              <Card style={{ borderRadius: 12, borderTop: '4px solid #52c41a' }}>
-                <Statistic
-                  title="Doanh Thu Hôm Nay"
-                  value={18650000}
-                  precision={0}
-                  suffix="VNĐ"
-                  prefix={<DollarOutlined style={{ color: '#52c41a' }} />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card style={{ borderRadius: 12, borderTop: '4px solid #1890ff' }}>
-                <Statistic
-                  title="Hóa Đơn Bán Hàng"
-                  value={142}
-                  suffix="Đơn"
-                  prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card style={{ borderRadius: 12, borderTop: '4px solid #faad14' }}>
-                <Statistic
-                  title="Cảnh Báo Hết Hàng"
-                  value={8}
-                  suffix="Mặt hàng"
-                  prefix={<AlertOutlined style={{ color: '#faad14' }} />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card style={{ borderRadius: 12, borderTop: '4px solid #722ed1' }}>
-                <Statistic
-                  title="Nhân Sự Đang Trực"
-                  value={12}
-                  suffix="Người"
-                  prefix={<TeamOutlined style={{ color: '#722ed1' }} />}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          <Card title="Truy Cập Nhanh Các Phân Hệ Nghiệp Vụ" style={{ borderRadius: 12 }}>
-            <Space orientation="horizontal" size="large" wrap>
-              <Link to="/cashier">
-                <Button
-                  type="primary"
-                  icon={<ShoppingCartOutlined />}
-                  size="large"
-                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-                >
-                  Mở Quầy Thu Ngân (Bán Hàng)
-                </Button>
-              </Link>
-              <Link to="/inventory">
-                <Button
-                  type="primary"
-                  icon={<InboxOutlined />}
-                  size="large"
-                  style={{ backgroundColor: '#1890ff' }}
-                >
-                  Mở Phân Hệ Quản Lý Kho
-                </Button>
-              </Link>
-            </Space>
-          </Card>
-        </div>
+        <OverviewTab
+          paymentSummary={paymentSummary}
+          lowStockCount={lowStockCount}
+          feedbackSummary={feedbackSummary}
+          pendingReportsCount={pendingReportsCount}
+          onNavigateTab={onTabChange}
+        />
       ),
     },
     {
       key: 'employees',
-      label: 'Quản Lý Nhân Viên Siêu Thị',
+      label: (
+        <span>
+          <TeamOutlined /> Quản Lý Nhân Sự
+        </span>
+      ),
       children: (
-        <Card
-          title="Danh Sách Nhân Viên Hệ Thống"
-          extra={
-            <Button type="primary" icon={<UserAddOutlined />} onClick={onAddEmployee}>
-              Thêm Nhân Viên
-            </Button>
-          }
-          style={{ borderRadius: 12 }}
-        >
-          <Table
-            columns={employeeColumns}
-            dataSource={employeeList}
-            rowKey="employeeId"
-            pagination={{ pageSize: 5 }}
-          />
-        </Card>
+        <EmployeeManagementTab
+          employees={employees}
+          loading={loadingEmployees}
+          pagination={employeePagination}
+          onTableChange={onEmployeeTableChange}
+          onSearch={onSearchEmployees}
+          onCreateEmployee={onCreateEmployee}
+          onUpdateEmployee={onUpdateEmployee}
+          onDeleteEmployee={onDeleteEmployee}
+          onRefresh={onRefreshEmployees}
+        />
+      ),
+    },
+    {
+      key: 'products',
+      label: (
+        <span>
+          <AppstoreOutlined /> Sản Phẩm & Tồn Kho
+        </span>
+      ),
+      children: (
+        <ProductManagementTab
+          products={products}
+          loading={loadingProducts}
+          pagination={productPagination}
+          onTableChange={onProductTableChange}
+          onSearch={onSearchProducts}
+          onUpdateProduct={onUpdateProduct}
+          onRefresh={onRefreshProducts}
+        />
+      ),
+    },
+    {
+      key: 'inventory-reports',
+      label: (
+        <span>
+          <FileDoneOutlined /> Xem Xét Kiểm Kê Kho
+        </span>
+      ),
+      children: (
+        <InventoryReportTab
+          reports={inventoryReports}
+          loading={loadingReports}
+          pagination={reportsPagination}
+          onTableChange={onReportsTableChange}
+          onRefresh={onRefreshReports}
+        />
+      ),
+    },
+    {
+      key: 'feedback',
+      label: (
+        <span>
+          <StarOutlined /> Đánh Giá Khách Hàng
+        </span>
+      ),
+      children: (
+        <FeedbackReviewTab
+          feedbackData={feedbackData}
+          loading={loadingFeedbacks}
+          selectedRating={selectedRating}
+          onRatingChange={onRatingChange}
+          onRefresh={onRefreshFeedbacks}
+        />
+      ),
+    },
+    {
+      key: 'transactions',
+      label: (
+        <span>
+          <HistoryOutlined /> Lịch Sử Hóa Đơn & Doanh Thu
+        </span>
+      ),
+      children: (
+        <TransactionHistoryTab
+          invoices={invoices}
+          loading={loadingInvoices}
+          selectedStatus={selectedInvoiceStatus}
+          onStatusChange={onInvoiceStatusChange}
+          onRefresh={onRefreshInvoices}
+        />
       ),
     },
   ]
@@ -165,14 +178,26 @@ export default function AdminDesktop({ user, employeeList, onAddEmployee }) {
     <DefaultLayout user={user}>
       <div style={{ marginBottom: 20 }}>
         <Title level={2} style={{ margin: 0, color: '#001529' }}>
-          👑 Bảng Điều Khiển Quản Trị (Store Owner)
+          👑 Bảng Điều Khiển Quản Trị Hệ Thống (CMS)
         </Title>
         <Text type="secondary">
-          Xin chào <strong>{user?.fullName}</strong>! Giám sát toàn diện doanh thu, nhân sự và chuỗi cung ứng siêu thị.
+          Xin chào <strong>{user?.fullName}</strong>! Giám sát toàn diện nhân sự, kho vận, doanh thu và cảm nhận khách hàng.
         </Text>
       </div>
 
-      <Tabs defaultActiveKey="overview" items={tabItems} size="large" />
+      <Tabs
+        activeKey={activeTab}
+        onChange={onTabChange}
+        items={tabItems}
+        size="large"
+        type="card"
+        style={{
+          background: '#fff',
+          padding: '16px 20px',
+          borderRadius: 12,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        }}
+      />
     </DefaultLayout>
   )
 }

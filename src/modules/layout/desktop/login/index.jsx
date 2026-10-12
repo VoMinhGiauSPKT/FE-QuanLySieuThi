@@ -114,10 +114,24 @@ export default function LoginDesktop({ onFinish, isLoading, errorMsg }) {
           </Form.Item>
         </Form>
 
-        <div style={{ textAlign: 'center', marginTop: 12 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Phần mềm Công Nghệ Phần Mềm • Phiên bản 1.0.0
-          </Text>
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <a
+            href="/feedback"
+            style={{
+              display: 'inline-block',
+              fontSize: 13,
+              color: '#1890ff',
+              fontWeight: 500,
+              marginBottom: 12,
+            }}
+          >
+            ⭐ Khách hàng đánh giá chất lượng dịch vụ tại đây
+          </a>
+          <div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Phần mềm Quản Lý Siêu Thị • Phiên bản 1.0.0
+            </Text>
+          </div>
         </div>
       </Card>
     </div>

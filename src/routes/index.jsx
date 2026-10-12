@@ -3,12 +3,19 @@ import LoginContainer from '../modules/containers/login'
 import AdminContainer from '../modules/containers/admin'
 import CashierContainer from '../modules/containers/cashier'
 import InventoryContainer from '../modules/containers/inventory'
+import FeedbackContainer from '../modules/containers/feedback'
 import ProtectedRoute from './ProtectedRoute'
 import PublicRoute from './PublicRoute'
 import RootRedirect from './RootRedirect'
 import { USER_ROLES } from '../constants/roles'
 
 const router = createBrowserRouter([
+  // Route đánh giá dịch vụ công khai cho khách hàng
+  {
+    path: '/feedback',
+    element: <FeedbackContainer />,
+  },
+
   // Route đăng nhập công khai (Public)
   {
     path: '/login',
