@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Table, Button, Card, Input, Tag, Typography } from 'antd'
 import {
   UserAddOutlined,
@@ -7,19 +8,56 @@ import {
   TrophyOutlined,
 } from '@ant-design/icons'
 import { formatDateTime } from '../../../../../utils/formatters'
+import { useCustomerStore } from '../../../../../stores/customerStore'
 
 const { Text } = Typography
 
 export default function CustomerListView({
-  customers,
-  loading,
-  searchKeyword,
+  customers: propCustomers,
+  loading: propLoading,
+  searchKeyword: propSearchKeyword,
   onSearchChange,
   onSearch,
   onOpenRegisterModal,
   onSelectCustomerForCart,
   onRefresh,
 }) {
+  const store = useCustomerStore()
+
+  const customers = propCustomers ?? store.customers
+  const loading = propLoading ?? store.loading
+  const [internalKeyword, setInternalKeyword] = useState('')
+  const searchKeyword = propSearchKeyword !== undefined ? propSearchKeyword : internalKeyword
+
+  useEffect(() => {
+    if (!propCustomers) {
+      store.fetchCustomers({ limit: 20 })
+    }
+  }, [propCustomers])
+
+  const handleSearchChange = (val) => {
+    if (onSearchChange) {
+      onSearchChange(val)
+    } else {
+      setInternalKeyword(val)
+    }
+  }
+
+  const handleSearch = () => {
+    if (onSearch) {
+      onSearch()
+    } else {
+      store.fetchCustomers({ keyword: searchKeyword, limit: 20 })
+    }
+  }
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    } else {
+      store.fetchCustomers({ keyword: searchKeyword, limit: 20 })
+    }
+  }
   const safeCustomers = Array.isArray(customers) ? customers : []
 
   const columns = [
@@ -102,15 +140,15 @@ export default function CustomerListView({
           placeholder="Tìm theo tên hoặc số điện thoại..."
           prefix={<SearchOutlined />}
           value={searchKeyword}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onPressEnter={onSearch}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          onPressEnter={handleSearch}
           style={{ width: 300 }}
           allowClear
         />
-        <Button type="primary" onClick={onSearch}>
+        <Button type="primary" onClick={handleSearch}>
           Tìm Kiếm
         </Button>
-        <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+        <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
           Làm Mới
         </Button>
       </div>

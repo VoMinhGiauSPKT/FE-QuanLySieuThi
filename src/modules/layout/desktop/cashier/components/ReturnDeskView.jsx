@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   Input,
@@ -20,25 +20,44 @@ import {
   FileProtectOutlined,
 } from '@ant-design/icons'
 import { formatCurrency, formatDateTime } from '../../../../../utils/formatters'
+import { useReturnReceiptStore } from '../../../../../stores/returnReceiptStore'
+import { useInvoiceStore } from '../../../../../stores/invoiceStore'
 
 const { Title, Text } = Typography
 
 export default function ReturnDeskView({
   onSearchInvoice,
   onCreateReturn,
-  returnReceipts,
-  loadingReturn,
+  returnReceipts: propReturnReceipts,
+  loadingReturn: propLoadingReturn,
 }) {
+  const returnReceiptStore = useReturnReceiptStore()
+  const invoiceStore = useInvoiceStore()
+
+  const returnReceipts = propReturnReceipts ?? returnReceiptStore.returnReceipts
+  const loadingReturn = propLoadingReturn ?? returnReceiptStore.loading
+
   const [searchInvoiceId, setSearchInvoiceId] = useState('')
   const [invoiceDetail, setInvoiceDetail] = useState(null)
   const [selectedReturns, setSelectedReturns] = useState({}) // { [productId]: quantity }
   const [returnReason, setReturnReason] = useState('')
   const [searching, setSearching] = useState(false)
 
+  useEffect(() => {
+    if (!propReturnReceipts) {
+      returnReceiptStore.fetchReturnReceipts({ limit: 10 })
+    }
+  }, [propReturnReceipts])
+
   const handleSearch = async () => {
     if (!searchInvoiceId.trim()) return
     setSearching(true)
-    const result = await onSearchInvoice(searchInvoiceId.trim())
+    let result = null
+    if (onSearchInvoice) {
+      result = await onSearchInvoice(searchInvoiceId.trim())
+    } else {
+      result = await invoiceStore.fetchInvoiceDetail(searchInvoiceId.trim())
+    }
     setInvoiceDetail(result)
     setSelectedReturns({})
     setSearching(false)
@@ -72,7 +91,9 @@ export default function ReturnDeskView({
       })),
     }
 
-    const ok = await onCreateReturn(payload)
+    const ok = onCreateReturn
+      ? await onCreateReturn(payload)
+      : await returnReceiptStore.createReturnReceipt(payload)
     if (ok) {
       setInvoiceDetail(null)
       setSelectedReturns({})

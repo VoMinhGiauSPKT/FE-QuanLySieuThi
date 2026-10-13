@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   Button,
@@ -19,17 +19,27 @@ import {
   EyeOutlined,
 } from '@ant-design/icons'
 import { formatDateTime } from '../../../../../utils/formatters'
+import { useReportStore } from '../../../../../stores/reportStore'
+import { useProductStore } from '../../../../../stores/productStore'
 
 const { Text } = Typography
 
 export default function DiscrepancyReportView({
-  products,
-  reports,
-  loadingReports,
+  products: propProducts,
+  reports: propReports,
+  loadingReports: propLoadingReports,
   onCreateReport,
-  creating,
+  creating: propCreating,
   onRefresh,
 }) {
+  const reportStore = useReportStore()
+  const productStore = useProductStore()
+
+  const reports = propReports ?? reportStore.reports
+  const loadingReports = propLoadingReports ?? reportStore.loading
+  const products = propProducts ?? productStore.products
+  const creating = propCreating ?? reportStore.creating
+
   const safeProducts = Array.isArray(products) ? products : []
   const safeReports = Array.isArray(reports) ? reports : []
 
@@ -37,6 +47,40 @@ export default function DiscrepancyReportView({
   const [form] = Form.useForm()
   const [selectedReport, setSelectedReport] = useState(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  useEffect(() => {
+    if (!propReports) {
+      reportStore.fetchReports(1, 20)
+    }
+    if (!propProducts) {
+      productStore.fetchProducts(1, 50, {})
+    }
+  }, [propReports, propProducts])
+
+  const handleViewReportDetail = async (record) => {
+    setSelectedReport(record)
+    setIsDetailModalOpen(true)
+    setDetailLoading(true)
+    try {
+      const data = await reportStore.fetchReportDetail(record.reportId)
+      if (data) {
+        setSelectedReport(data)
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải chi tiết biên bản kiểm kê:', err)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    } else {
+      reportStore.fetchReports(1, 20)
+    }
+  }
 
   // State lưu số lượng thực tế & lý do cho từng sản phẩm: { [productId]: { actualQuantity, reason } }
   const [auditData, setAuditData] = useState({})
@@ -98,16 +142,19 @@ export default function DiscrepancyReportView({
       return
     }
 
+    const title = values.note?.trim() || 'Kiểm kê định kỳ kho'
     const payload = {
-      note: values.note || 'Kiểm kê định kỳ kho',
+      auditTitle: title,
+      note: title,
       items: discrepancyItems.map((item) => ({
         productId: item.productId,
         actualQuantity: Number(item.actualQuantity),
-        discrepancyReason: item.discrepancyReason || 'Hao hụt kiểm kê',
+        reason: item.discrepancyReason || item.reason || 'Hao hụt kiểm kê',
+        discrepancyReason: item.discrepancyReason || item.reason || 'Hao hụt kiểm kê',
       })),
     }
 
-    const ok = await onCreateReport(payload)
+    const ok = onCreateReport ? await onCreateReport(payload) : await reportStore.createStockDiscrepancy(payload)
     if (ok) {
       form.resetFields()
       setIsModalOpen(false)
@@ -119,21 +166,21 @@ export default function DiscrepancyReportView({
       title: 'Mã Biên Bản',
       dataIndex: 'reportId',
       key: 'reportId',
-      render: (id) => <Text code>{id ? id.substring(0, 8) + '...' : 'N/A'}</Text>,
+      render: (id) => <Tag color="blue">{id}</Tag>,
     },
     {
-      title: 'Ghi Chú Đợt Kiểm Kê',
-      dataIndex: 'note',
-      key: 'note',
-      render: (n) => <Text strong>{n || 'Kiểm kê kho'}</Text>,
+      title: 'Tiêu Đề / Ghi Chú',
+      dataIndex: 'auditTitle',
+      key: 'auditTitle',
+      render: (t, r) => <Text strong>{t || r.note || 'Kiểm kê định kỳ kho'}</Text>,
     },
     {
       title: 'Mặt Hàng Lệch',
-      dataIndex: 'discrepancies',
-      key: 'discrepancyCount',
-      render: (items) => (
+      dataIndex: 'totalDiscrepancyItems',
+      key: 'totalDiscrepancyItems',
+      render: (count, r) => (
         <Tag color="orange" style={{ fontWeight: 600 }}>
-          {items?.length || 0} sản phẩm
+          {count ?? r.discrepancies?.length ?? 0} sản phẩm
         </Tag>
       ),
     },
@@ -150,10 +197,7 @@ export default function DiscrepancyReportView({
         <Button
           type="text"
           icon={<EyeOutlined style={{ color: '#1890ff' }} />}
-          onClick={() => {
-            setSelectedReport(record)
-            setIsDetailModalOpen(true)
-          }}
+          onClick={() => handleViewReportDetail(record)}
         >
           Chi Tiết
         </Button>
@@ -228,7 +272,7 @@ export default function DiscrepancyReportView({
             >
               Lập Biên Bản Kiểm Kê Mới
             </Button>
-            <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
               Làm Mới
             </Button>
           </Space>
@@ -314,7 +358,12 @@ export default function DiscrepancyReportView({
 
       {/* Modal chi tiết biên bản */}
       <Modal
-        title="Chi Tiết Biên Bản Kiểm Kê Kho"
+        title={
+          <Space>
+            <FileAddOutlined style={{ color: '#faad14' }} />
+            <span>Chi Tiết Biên Bản Kiểm Kê: {selectedReport?.reportId}</span>
+          </Space>
+        }
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={[
@@ -322,34 +371,113 @@ export default function DiscrepancyReportView({
             Đóng
           </Button>,
         ]}
-        width={750}
+        width={800}
       >
         {selectedReport && (
           <div>
-            <p>
-              Ghi chú: <strong>{selectedReport.note}</strong>
-            </p>
-            <p>Thời gian lập: {formatDateTime(selectedReport.createdAt)}</p>
-            <Divider style={{ margin: '12px 0' }} />
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '8px 16px',
+                padding: '12px 16px',
+                background: '#fffbe6',
+                border: '1px solid #ffe58f',
+                borderRadius: 8,
+                marginBottom: 16,
+                fontSize: 13,
+              }}
+            >
+              <div>
+                <Text type="secondary">Mã biên bản: </Text>
+                <Tag color="blue">{selectedReport.reportId}</Tag>
+              </div>
+              <div>
+                <Text type="secondary">Tiêu đề / Ghi chú: </Text>
+                <Text strong>{selectedReport.auditTitle || selectedReport.note || 'Kiểm kê định kỳ kho'}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Thời gian lập: </Text>
+                <Text strong>{formatDateTime(selectedReport.createdAt)}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Người lập: </Text>
+                <Text strong>
+                  {selectedReport.createdBy?.fullName ||
+                    selectedReport.createdBy?.username ||
+                    selectedReport.createdBy?.employeeId ||
+                    'Thủ kho'}
+                </Text>
+              </div>
+            </div>
+
+            <Text strong style={{ fontSize: 14, display: 'block', marginBottom: 8 }}>
+              Chi Tiết Danh Sách Mặt Hàng Kiểm Kê:
+            </Text>
             <Table
+              loading={detailLoading}
               columns={[
-                { title: 'Tên Sản Phẩm', dataIndex: 'productName', key: 'productName' },
-                { title: 'Tồn Hệ Thống', dataIndex: 'systemQuantity', key: 'systemQuantity' },
-                { title: 'Thực Tế', dataIndex: 'actualQuantity', key: 'actualQuantity' },
+                {
+                  title: 'Mã SP',
+                  dataIndex: 'productId',
+                  key: 'productId',
+                  width: 90,
+                  render: (id) => <Tag color="blue">{id}</Tag>,
+                },
+                {
+                  title: 'Tên Sản Phẩm',
+                  dataIndex: 'productName',
+                  key: 'productName',
+                  render: (name) => <Text strong>{name}</Text>,
+                },
+                {
+                  title: 'Loại SP',
+                  dataIndex: 'categoryName',
+                  key: 'categoryName',
+                  render: (cat) => (cat ? <Tag color="cyan">{cat}</Tag> : '-'),
+                },
+                {
+                  title: 'Tồn Hệ Thống',
+                  dataIndex: 'systemQuantity',
+                  key: 'systemQuantity',
+                  align: 'center',
+                  width: 110,
+                  render: (q) => <Tag color="blue">{q} đơn vị</Tag>,
+                },
+                {
+                  title: 'Thực Tế',
+                  dataIndex: 'actualQuantity',
+                  key: 'actualQuantity',
+                  align: 'center',
+                  width: 100,
+                  render: (q) => <Text strong>{q}</Text>,
+                },
                 {
                   title: 'Chênh Lệch',
                   dataIndex: 'difference',
                   key: 'difference',
+                  align: 'center',
+                  width: 110,
                   render: (d) => (
-                    <Tag color={d < 0 ? 'red' : 'green'}>{d > 0 ? `+${d}` : d}</Tag>
+                    <Tag
+                      color={d < 0 ? 'red' : d > 0 ? 'green' : 'default'}
+                      style={{ fontWeight: 600 }}
+                    >
+                      {d > 0 ? `+${d}` : d}
+                    </Tag>
                   ),
                 },
-                { title: 'Nguyên Nhân', dataIndex: 'discrepancyReason', key: 'discrepancyReason' },
+                {
+                  title: 'Lý Do Giải Trình',
+                  key: 'reason',
+                  render: (_, r) => r.reason || r.discrepancyReason || '-',
+                },
               ]}
-              dataSource={selectedReport.discrepancies || []}
-              rowKey="productId"
+              dataSource={selectedReport.items || selectedReport.discrepancies || []}
+              rowKey={(r) => r.productId || Math.random()}
               pagination={false}
               size="small"
+              bordered
             />
           </div>
         )}

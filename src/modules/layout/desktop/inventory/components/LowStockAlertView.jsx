@@ -1,17 +1,50 @@
+import { useState, useEffect } from 'react'
 import { Table, Button, Card, Tag, Space, Typography, Select, Alert } from 'antd'
 import { WarningOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { formatCurrency, formatDate } from '../../../../../utils/formatters'
+import { useProductStore } from '../../../../../stores/productStore'
 
 const { Text } = Typography
 
 export default function LowStockAlertView({
-  lowStockItems,
-  loading,
-  threshold,
+  lowStockItems: propLowStockItems,
+  loading: propLoading,
+  threshold: propThreshold,
   onThresholdChange,
   onGoToImport,
   onRefresh,
 }) {
+  const store = useProductStore()
+
+  const lowStockItems = propLowStockItems ?? store.lowStockItems
+  const loading = propLoading ?? store.loadingLowStock
+  const [internalThreshold, setInternalThreshold] = useState(10)
+  const threshold = propThreshold !== undefined ? propThreshold : (store.threshold || internalThreshold)
+
+  useEffect(() => {
+    if (!propLowStockItems) {
+      store.fetchLowStockAlerts(threshold)
+    }
+  }, [propLowStockItems, threshold])
+
+  const handleThresholdChange = (val) => {
+    setInternalThreshold(val)
+    if (onThresholdChange) {
+      onThresholdChange(val)
+    } else {
+      store.setThreshold(val)
+      store.fetchLowStockAlerts(val)
+    }
+  }
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    } else {
+      store.fetchLowStockAlerts(threshold)
+    }
+  }
+
   const safeLowStockItems = Array.isArray(lowStockItems) ? lowStockItems : []
 
   const columns = [
@@ -94,13 +127,13 @@ export default function LowStockAlertView({
         extra={
           <Space>
             <span>Ngưỡng cảnh báo:</span>
-            <Select value={threshold} onChange={onThresholdChange} style={{ width: 120 }}>
+            <Select value={threshold} onChange={handleThresholdChange} style={{ width: 120 }}>
               <Select.Option value={5}>&le; 5 đơn vị</Select.Option>
               <Select.Option value={10}>&le; 10 đơn vị</Select.Option>
               <Select.Option value={15}>&le; 15 đơn vị</Select.Option>
               <Select.Option value={20}>&le; 20 đơn vị</Select.Option>
             </Select>
-            <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
               Làm Mới
             </Button>
           </Space>

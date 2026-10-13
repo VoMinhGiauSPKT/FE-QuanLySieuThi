@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Row, Col, Card, Statistic, Button, Space, Typography, Alert } from 'antd'
 import {
   DollarOutlined,
@@ -11,16 +12,44 @@ import {
 } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../../../../../utils/formatters'
+import { usePaymentStore } from '../../../../../stores/paymentStore'
+import { useProductStore } from '../../../../../stores/productStore'
+import { useFeedbackStore } from '../../../../../stores/feedbackStore'
+import { useReportStore } from '../../../../../stores/reportStore'
 
 const { Text } = Typography
 
 export default function OverviewTab({
-  paymentSummary,
-  lowStockCount,
-  feedbackSummary,
-  pendingReportsCount,
+  paymentSummary: propPaymentSummary,
+  lowStockCount: propLowStockCount,
+  feedbackSummary: propFeedbackSummary,
+  pendingReportsCount: propPendingReportsCount,
   onNavigateTab,
 }) {
+  const paymentStore = usePaymentStore()
+  const productStore = useProductStore()
+  const feedbackStore = useFeedbackStore()
+  const reportStore = useReportStore()
+
+  const paymentSummary = propPaymentSummary ?? paymentStore.summary
+  const lowStockCount = propLowStockCount ?? productStore.lowStockCount
+  const feedbackSummary = propFeedbackSummary ?? feedbackStore.feedbackData?.summary
+  const pendingReportsCount = propPendingReportsCount ?? reportStore.reports?.length
+
+  useEffect(() => {
+    if (!propPaymentSummary) {
+      paymentStore.fetchPaymentSummary()
+    }
+    if (propLowStockCount === undefined) {
+      productStore.fetchLowStockAlerts(10)
+    }
+    if (!propFeedbackSummary) {
+      feedbackStore.fetchFeedbacks()
+    }
+    if (propPendingReportsCount === undefined) {
+      reportStore.fetchReports(1, 10)
+    }
+  }, [propPaymentSummary, propLowStockCount, propFeedbackSummary, propPendingReportsCount])
   return (
     <div>
       {/* Cảnh báo nếu có tồn kho thấp hoặc báo cáo kiểm kê cần xem */}
