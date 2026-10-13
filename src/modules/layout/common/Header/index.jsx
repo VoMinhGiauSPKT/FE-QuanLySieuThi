@@ -50,8 +50,12 @@ export default function Header({ user: propUser, onLogout, isLoggingOut }) {
               <Button
                 type={location.pathname === '/admin' ? 'primary' : 'text'}
                 icon={<DashboardOutlined />}
-                style={{ color: location.pathname === '/admin' ? '#fff' : '#rgba(255,255,255,0.75)' }}
-                size="small"
+                style={{
+                  color: '#ffffff',
+                  fontWeight: location.pathname === '/admin' ? 600 : 400,
+                  backgroundColor: location.pathname === '/admin' ? '#1890ff' : 'transparent',
+                }}
+                size="middle"
               >
                 Quản Trị
               </Button>
@@ -60,8 +64,12 @@ export default function Header({ user: propUser, onLogout, isLoggingOut }) {
               <Button
                 type={location.pathname === '/cashier' ? 'primary' : 'text'}
                 icon={<ShoppingCartOutlined />}
-                style={{ color: location.pathname === '/cashier' ? '#fff' : '#rgba(255,255,255,0.75)' }}
-                size="small"
+                style={{
+                  color: '#ffffff',
+                  fontWeight: location.pathname === '/cashier' ? 600 : 400,
+                  backgroundColor: location.pathname === '/cashier' ? '#1890ff' : 'transparent',
+                }}
+                size="middle"
               >
                 Thu Ngân (POS)
               </Button>
@@ -70,8 +78,12 @@ export default function Header({ user: propUser, onLogout, isLoggingOut }) {
               <Button
                 type={location.pathname === '/inventory' ? 'primary' : 'text'}
                 icon={<InboxOutlined />}
-                style={{ color: location.pathname === '/inventory' ? '#fff' : '#rgba(255,255,255,0.75)' }}
-                size="small"
+                style={{
+                  color: '#ffffff',
+                  fontWeight: location.pathname === '/inventory' ? 600 : 400,
+                  backgroundColor: location.pathname === '/inventory' ? '#1890ff' : 'transparent',
+                }}
+                size="middle"
               >
                 Quản Lý Kho
               </Button>

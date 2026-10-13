@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import {
   Row,
   Col,
@@ -19,18 +20,60 @@ import {
   CalendarOutlined,
 } from '@ant-design/icons'
 import { formatCurrency, formatDate } from '../../../../../utils/formatters'
+import { useProductStore } from '../../../../../stores/productStore'
 
 const { Text } = Typography
 
 export default function StockOverviewView({
-  products,
-  loading,
-  lowStockCount,
-  searchKeyword,
+  products: propProducts,
+  loading: propLoading,
+  lowStockCount: propLowStockCount,
+  searchKeyword: propSearchKeyword,
   onSearchChange,
   onSearch,
   onRefresh,
 }) {
+  const productStore = useProductStore()
+
+  const products = propProducts ?? productStore.products
+  const loading = propLoading ?? productStore.loading
+  const lowStockCount = propLowStockCount ?? productStore.lowStockCount
+
+  const [internalKeyword, setInternalKeyword] = useState('')
+  const searchKeyword = propSearchKeyword !== undefined ? propSearchKeyword : internalKeyword
+
+  useEffect(() => {
+    if (!propProducts) {
+      productStore.fetchProducts(1, 50, {})
+      productStore.fetchLowStockAlerts(10)
+    }
+  }, [propProducts])
+
+  const handleSearchChange = (val) => {
+    if (onSearchChange) {
+      onSearchChange(val)
+    } else {
+      setInternalKeyword(val)
+    }
+  }
+
+  const handleSearch = () => {
+    if (onSearch) {
+      onSearch()
+    } else {
+      productStore.fetchProducts(1, 50, { keyword: searchKeyword })
+    }
+  }
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    } else {
+      productStore.fetchProducts(1, 50, { keyword: searchKeyword })
+      productStore.fetchLowStockAlerts(10)
+    }
+  }
+
   const safeProducts = Array.isArray(products) ? products : []
 
   const columns = [
@@ -163,15 +206,15 @@ export default function StockOverviewView({
               placeholder="Tìm theo tên sản phẩm..."
               prefix={<SearchOutlined />}
               value={searchKeyword}
-              onChange={(e) => onSearchChange(e.target.value)}
-              onPressEnter={onSearch}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onPressEnter={handleSearch}
               style={{ width: 260 }}
               allowClear
             />
-            <Button type="primary" onClick={onSearch}>
+            <Button type="primary" onClick={handleSearch}>
               Tìm Kiếm
             </Button>
-            <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
               Làm Mới
             </Button>
           </Space>

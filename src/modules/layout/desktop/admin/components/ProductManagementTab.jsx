@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Table,
   Button,
@@ -19,18 +19,31 @@ import {
   WarningOutlined,
 } from '@ant-design/icons'
 import { formatCurrency, formatDate } from '../../../../../utils/formatters'
+import { useProductStore } from '../../../../../stores/productStore'
+import { useCategoryStore } from '../../../../../stores/categoryStore'
 
 const { Text } = Typography
 
 export default function ProductManagementTab({
-  products,
-  loading,
-  pagination,
+  products: propProducts,
+  loading: propLoading,
+  pagination: propPagination,
   onTableChange,
   onSearch,
   onUpdateProduct,
   onRefresh,
+  categories: propCategories,
 }) {
+  const productStore = useProductStore()
+  const categoryStore = useCategoryStore()
+
+  const products = propProducts ?? productStore.products
+  const loading = propLoading ?? productStore.loading
+  const pagination = propPagination ?? productStore.pagination
+  const categories = propCategories && propCategories.length > 0 
+    ? propCategories 
+    : (categoryStore.allCategories.length > 0 ? categoryStore.allCategories : categoryStore.categories)
+
   const safeProducts = Array.isArray(products) ? products : []
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -39,28 +52,64 @@ export default function ProductManagementTab({
 
   const [keyword, setKeyword] = useState('')
   const [status, setStatus] = useState(undefined)
+  const [categoryId, setCategoryId] = useState(undefined)
   const [onlyLowStock, setOnlyLowStock] = useState(false)
 
+  useEffect(() => {
+    if (!propProducts) {
+      productStore.fetchProducts(1, 8, {})
+    }
+    if (!propCategories || propCategories.length === 0) {
+      categoryStore.fetchAllCategories()
+    }
+  }, [propProducts, propCategories])
+
   const handleApplyFilter = () => {
-    onSearch({
+    const filters = {
       keyword,
+      categoryId,
       productStatus: status,
       isLowStock: onlyLowStock,
-    })
+    }
+    if (onSearch) {
+      onSearch(filters)
+    } else {
+      productStore.fetchProducts(1, pagination?.pageSize || 8, filters)
+    }
   }
 
   const handleResetFilter = () => {
     setKeyword('')
     setStatus(undefined)
+    setCategoryId(undefined)
     setOnlyLowStock(false)
-    if (onRefresh) onRefresh()
-    else onSearch({})
+    if (onRefresh) {
+      onRefresh()
+    } else if (onSearch) {
+      onSearch({})
+    } else {
+      productStore.fetchProducts(1, pagination?.pageSize || 8, {})
+    }
+  }
+
+  const handleTableChange = (pag) => {
+    if (onTableChange) {
+      onTableChange(pag)
+    } else {
+      productStore.fetchProducts(pag.current, pag.pageSize, {
+        keyword,
+        categoryId,
+        productStatus: status,
+        isLowStock: onlyLowStock,
+      })
+    }
   }
 
   const handleOpenEdit = (prod) => {
     setEditingProduct(prod)
     editForm.setFieldsValue({
       productName: prod.productName,
+      categoryId: prod.category?.categoryId || prod.categoryId,
       unitPrice: prod.unitPrice,
       productStatus: prod.productStatus,
     })
@@ -151,18 +200,31 @@ export default function ProductManagementTab({
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onPressEnter={handleApplyFilter}
-            style={{ width: 240 }}
+            style={{ width: 220 }}
             allowClear
           />
+          <Select
+            placeholder="Tất cả loại sản phẩm"
+            value={categoryId}
+            onChange={setCategoryId}
+            style={{ width: 180 }}
+            allowClear
+          >
+            {categories.map((c) => (
+              <Select.Option key={c.categoryId} value={c.categoryId}>
+                {c.categoryName}
+              </Select.Option>
+            ))}
+          </Select>
           <Select
             placeholder="Trạng thái kinh doanh"
             value={status}
             onChange={setStatus}
-            style={{ width: 180 }}
+            style={{ width: 170 }}
             allowClear
           >
             <Select.Option value="ON_SALE">Đang kinh doanh</Select.Option>
-            <Select.Option value="STOP_SELLING">Ngừng bán</Select.Option>
+            <Select.Option value="DISCONTINUED">Ngừng kinh doanh</Select.Option>
           </Select>
           <Button
             type={onlyLowStock ? 'primary' : 'default'}
@@ -186,7 +248,7 @@ export default function ProductManagementTab({
           rowKey="productId"
           loading={loading}
           pagination={pagination}
-          onChange={onTableChange}
+          onChange={handleTableChange}
         />
       </Card>
 
@@ -203,7 +265,9 @@ export default function ProductManagementTab({
           layout="vertical"
           onFinish={async (values) => {
             if (editingProduct) {
-              const ok = await onUpdateProduct(editingProduct.productId, values)
+              const ok = onUpdateProduct
+                ? await onUpdateProduct(editingProduct.productId, values)
+                : await productStore.updateProduct(editingProduct.productId, values)
               if (ok) {
                 setIsEditModalOpen(false)
               }
@@ -216,6 +280,20 @@ export default function ProductManagementTab({
             rules={[{ required: true, message: 'Vui lòng nhập tên sản phẩm!' }]}
           >
             <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="categoryId"
+            label="Loại sản phẩm (Danh mục)"
+            rules={[{ required: true, message: 'Vui lòng chọn loại sản phẩm!' }]}
+          >
+            <Select placeholder="Chọn loại sản phẩm">
+              {categories.map((c) => (
+                <Select.Option key={c.categoryId} value={c.categoryId}>
+                  {c.categoryName} ({c.categoryId})
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item
@@ -235,7 +313,7 @@ export default function ProductManagementTab({
           <Form.Item name="productStatus" label="Trạng thái kinh doanh">
             <Select>
               <Select.Option value="ON_SALE">Đang kinh doanh (Bán tại quầy)</Select.Option>
-              <Select.Option value="STOP_SELLING">Ngừng bán</Select.Option>
+              <Select.Option value="DISCONTINUED">Ngừng kinh doanh</Select.Option>
             </Select>
           </Form.Item>
 

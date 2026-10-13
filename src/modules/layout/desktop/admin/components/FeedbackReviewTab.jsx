@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import {
   Card,
   Row,
@@ -17,16 +18,45 @@ import {
   SmileOutlined,
 } from '@ant-design/icons'
 import { formatDateTime } from '../../../../../utils/formatters'
+import { useFeedbackStore } from '../../../../../stores/feedbackStore'
 
 const { Title, Text, Paragraph } = Typography
 
 export default function FeedbackReviewTab({
-  feedbackData,
-  loading,
-  selectedRating,
+  feedbackData: propFeedbackData,
+  loading: propLoading,
+  selectedRating: propSelectedRating,
   onRatingChange,
   onRefresh,
 }) {
+  const store = useFeedbackStore()
+
+  const feedbackData = propFeedbackData ?? store.feedbackData
+  const loading = propLoading ?? store.loading
+  const selectedRating = propSelectedRating !== undefined ? propSelectedRating : store.selectedRating
+
+  useEffect(() => {
+    if (!propFeedbackData) {
+      store.fetchFeedbacks()
+    }
+  }, [propFeedbackData])
+
+  const handleRatingChange = (val) => {
+    if (onRatingChange) {
+      onRatingChange(val)
+    } else {
+      store.setSelectedRating(val)
+      store.fetchFeedbacks(val)
+    }
+  }
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    } else {
+      store.fetchFeedbacks(selectedRating)
+    }
+  }
   const summary = feedbackData?.summary || {
     totalFeedbacks: 0,
     averageRating: 5.0,
@@ -176,7 +206,7 @@ export default function FeedbackReviewTab({
             <Select
               placeholder="Lọc theo số sao"
               value={selectedRating}
-              onChange={onRatingChange}
+              onChange={handleRatingChange}
               style={{ width: 160 }}
               allowClear
             >
@@ -186,7 +216,7 @@ export default function FeedbackReviewTab({
               <Select.Option value={2}>2 sao (Kém)</Select.Option>
               <Select.Option value={1}>1 sao (Rất tệ)</Select.Option>
             </Select>
-            <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
               Làm Mới
             </Button>
           </Space>

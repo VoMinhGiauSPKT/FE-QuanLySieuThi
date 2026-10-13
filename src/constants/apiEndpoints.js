@@ -21,6 +21,10 @@ export const API_ENDPOINTS = {
     DETAIL: (id) => `/product/${id}`,
     LOW_STOCK_ALERTS: '/product/low-stock/alerts',
   },
+  CATEGORY: {
+    BASE: '/category',
+    DETAIL: (id) => `/category/${id}`,
+  },
   PURCHASE_RECEIPT: {
     BASE: '/purchase-receipt',
     DETAIL: (id) => `/purchase-receipt/${id}`,

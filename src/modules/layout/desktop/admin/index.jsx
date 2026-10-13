@@ -3,6 +3,7 @@ import {
   DashboardOutlined,
   TeamOutlined,
   AppstoreOutlined,
+  TagsOutlined,
   FileDoneOutlined,
   StarOutlined,
   HistoryOutlined,
@@ -11,6 +12,7 @@ import DefaultLayout from '../../common/DefaultLayout'
 import OverviewTab from './components/OverviewTab'
 import EmployeeManagementTab from './components/EmployeeManagementTab'
 import ProductManagementTab from './components/ProductManagementTab'
+import CategoryManagementTab from './components/CategoryManagementTab'
 import InventoryReportTab from './components/InventoryReportTab'
 import FeedbackReviewTab from './components/FeedbackReviewTab'
 import TransactionHistoryTab from './components/TransactionHistoryTab'
@@ -44,6 +46,17 @@ export default function AdminDesktop({
   onSearchProducts,
   onUpdateProduct,
   onRefreshProducts,
+  // Dữ liệu & action cho Loại sản phẩm (Categories)
+  categories,
+  allCategories,
+  loadingCategories,
+  categoryPagination,
+  onCategoryTableChange,
+  onSearchCategories,
+  onCreateCategory,
+  onUpdateCategory,
+  onDeleteCategory,
+  onRefreshCategories,
   // Dữ liệu & action cho Báo cáo kiểm kê kho
   inventoryReports,
   loadingReports,
@@ -118,6 +131,28 @@ export default function AdminDesktop({
           onSearch={onSearchProducts}
           onUpdateProduct={onUpdateProduct}
           onRefresh={onRefreshProducts}
+          categories={allCategories && allCategories.length ? allCategories : categories}
+        />
+      ),
+    },
+    {
+      key: 'categories',
+      label: (
+        <span>
+          <TagsOutlined /> Quản Lý Loại Sản Phẩm
+        </span>
+      ),
+      children: (
+        <CategoryManagementTab
+          categories={categories}
+          loading={loadingCategories}
+          pagination={categoryPagination}
+          onTableChange={onCategoryTableChange}
+          onSearch={onSearchCategories}
+          onCreateCategory={onCreateCategory}
+          onUpdateCategory={onUpdateCategory}
+          onDeleteCategory={onDeleteCategory}
+          onRefresh={onRefreshCategories}
         />
       ),
     },

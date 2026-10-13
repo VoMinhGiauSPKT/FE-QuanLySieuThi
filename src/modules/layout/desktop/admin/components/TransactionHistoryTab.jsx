@@ -1,16 +1,46 @@
+import { useState, useEffect } from 'react'
 import { Table, Tag, Card, Select, Button, Typography, Space } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { formatCurrency, formatDateTime } from '../../../../../utils/formatters'
+import { useInvoiceStore } from '../../../../../stores/invoiceStore'
 
 const { Text } = Typography
 
 export default function TransactionHistoryTab({
-  invoices,
-  loading,
-  selectedStatus,
+  invoices: propInvoices,
+  loading: propLoading,
+  selectedStatus: propSelectedStatus,
   onStatusChange,
   onRefresh,
 }) {
+  const store = useInvoiceStore()
+
+  const invoices = propInvoices ?? store.invoices
+  const loading = propLoading ?? store.loading
+  const [selectedStatus, setSelectedStatus] = useState(propSelectedStatus)
+
+  useEffect(() => {
+    if (!propInvoices) {
+      store.fetchInvoices({ limit: 20 })
+    }
+  }, [propInvoices])
+
+  const handleStatusChange = (status) => {
+    setSelectedStatus(status)
+    if (onStatusChange) {
+      onStatusChange(status)
+    } else {
+      store.fetchInvoices({ status, limit: 20 })
+    }
+  }
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    } else {
+      store.fetchInvoices({ status: selectedStatus, limit: 20 })
+    }
+  }
   const safeInvoices = Array.isArray(invoices) ? invoices : []
 
   const columns = [
@@ -93,7 +123,7 @@ export default function TransactionHistoryTab({
           <Select
             placeholder="Lọc theo trạng thái"
             value={selectedStatus}
-            onChange={onStatusChange}
+            onChange={handleStatusChange}
             style={{ width: 180 }}
             allowClear
           >
@@ -101,7 +131,7 @@ export default function TransactionHistoryTab({
             <Select.Option value="PENDING">Chờ thanh toán</Select.Option>
             <Select.Option value="CANCELLED">Đã hủy</Select.Option>
           </Select>
-          <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+          <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
             Làm Mới
           </Button>
         </Space>

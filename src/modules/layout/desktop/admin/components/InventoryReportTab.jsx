@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Table,
   Button,
@@ -16,22 +16,63 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons'
 import { formatDateTime } from '../../../../../utils/formatters'
+import { useReportStore } from '../../../../../stores/reportStore'
 
 const { Text } = Typography
 
 export default function InventoryReportTab({
-  reports,
-  loading,
-  pagination,
+  reports: propReports,
+  loading: propLoading,
+  pagination: propPagination,
   onTableChange,
   onRefresh,
 }) {
+  const store = useReportStore()
+
+  const reports = propReports ?? store.reports
+  const loading = propLoading ?? store.loading
+  const pagination = propPagination ?? store.pagination
+
   const [selectedReport, setSelectedReport] = useState(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
 
-  const handleOpenDetail = (record) => {
+  useEffect(() => {
+    if (!propReports) {
+      store.fetchReports(1, 8)
+    }
+  }, [propReports])
+
+  const handleOpenDetail = async (record) => {
     setSelectedReport(record)
     setIsDetailModalOpen(true)
+    setDetailLoading(true)
+    try {
+      const data = await store.fetchReportDetail(record.reportId)
+      if (data) {
+        setSelectedReport(data)
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải chi tiết biên bản kiểm kê:', err)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const handleTableChange = (pag) => {
+    if (onTableChange) {
+      onTableChange(pag)
+    } else {
+      store.fetchReports(pag.current, pag.pageSize)
+    }
+  }
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    } else {
+      store.fetchReports(pagination?.current || 1, pagination?.pageSize || 8)
+    }
   }
 
   const columns = [
@@ -40,7 +81,7 @@ export default function InventoryReportTab({
       dataIndex: 'reportId',
       key: 'reportId',
       width: 120,
-      render: (id) => <Text code>{id ? id.substring(0, 8) + '...' : 'N/A'}</Text>,
+      render: (id) => <Tag color="blue">{id}</Tag>,
     },
     {
       title: 'Người Lập (Thủ Kho)',
@@ -50,17 +91,17 @@ export default function InventoryReportTab({
     },
     {
       title: 'Ghi Chú Đợt Kiểm Kê',
-      dataIndex: 'note',
-      key: 'note',
-      render: (n) => <Text strong>{n || 'Kiểm kê định kỳ'}</Text>,
+      dataIndex: 'auditTitle',
+      key: 'auditTitle',
+      render: (t, rec) => <Text strong>{t || rec.note || 'Kiểm kê định kỳ'}</Text>,
     },
     {
       title: 'Số Mặt Hàng Lệch',
-      dataIndex: 'discrepancies',
-      key: 'discrepancyCount',
-      render: (items) => (
+      dataIndex: 'totalDiscrepancyItems',
+      key: 'totalDiscrepancyItems',
+      render: (cnt, rec) => (
         <Tag color="orange" style={{ fontWeight: 600 }}>
-          {items?.length || 0} sản phẩm
+          {cnt ?? rec.discrepancies?.length ?? 0} sản phẩm
         </Tag>
       ),
     },
@@ -89,13 +130,24 @@ export default function InventoryReportTab({
 
   const discrepancyColumns = [
     {
+      title: 'Mã SP',
+      dataIndex: 'productId',
+      key: 'productId',
+      width: 90,
+      render: (id) => <Tag color="blue">{id}</Tag>,
+    },
+    {
       title: 'Sản Phẩm',
       dataIndex: 'productName',
       key: 'productName',
       render: (name, rec) => (
         <div>
           <Text strong>{name || 'Sản phẩm'}</Text>
-          <div style={{ fontSize: 11, color: '#8c8c8c' }}>{rec.productId}</div>
+          {rec.categoryName && (
+            <div>
+              <Tag color="cyan" style={{ fontSize: 11, marginTop: 2 }}>{rec.categoryName}</Tag>
+            </div>
+          )}
         </div>
       ),
     },
@@ -103,18 +155,21 @@ export default function InventoryReportTab({
       title: 'Tồn Hệ Thống',
       dataIndex: 'systemQuantity',
       key: 'systemQuantity',
+      align: 'center',
       render: (qty) => <Tag color="blue">{qty} đơn vị</Tag>,
     },
     {
       title: 'Thực Tế Đếm Được',
       dataIndex: 'actualQuantity',
       key: 'actualQuantity',
+      align: 'center',
       render: (qty) => <Tag color="purple">{qty} đơn vị</Tag>,
     },
     {
       title: 'Chênh Lệch',
       dataIndex: 'difference',
       key: 'difference',
+      align: 'center',
       render: (diff) => (
         <Tag color={diff < 0 ? 'red' : diff > 0 ? 'green' : 'default'} style={{ fontWeight: 600 }}>
           {diff > 0 ? `+${diff}` : diff} đơn vị
@@ -123,9 +178,12 @@ export default function InventoryReportTab({
     },
     {
       title: 'Nguyên Nhân Chênh Lệch (Ghi chú kho)',
-      dataIndex: 'discrepancyReason',
-      key: 'discrepancyReason',
-      render: (reason) => <Text type="danger">{reason || 'Không rõ'}</Text>,
+      key: 'reason',
+      render: (_, rec) => (
+        <Text type={rec.difference !== 0 ? 'danger' : 'secondary'}>
+          {rec.reason || rec.discrepancyReason || 'Không có ghi chú'}
+        </Text>
+      ),
     },
   ]
 
@@ -134,7 +192,7 @@ export default function InventoryReportTab({
       <Card
         title="Biên Bản Kiểm Kê Kho & Xử Lý Chênh Lệch Tồn Kho"
         extra={
-          <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+          <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
             Làm Mới
           </Button>
         }
@@ -147,7 +205,7 @@ export default function InventoryReportTab({
           rowKey="reportId"
           loading={loading}
           pagination={pagination}
-          onChange={onTableChange}
+          onChange={handleTableChange}
         />
       </Card>
 
@@ -156,7 +214,7 @@ export default function InventoryReportTab({
         title={
           <Space>
             <FileSearchOutlined style={{ color: '#1890ff' }} />
-            <span>Chi Tiết Biên Bản Kiểm Kê Lệch Tồn Kho</span>
+            <span>Chi Tiết Biên Bản Kiểm Kê Lệch Tồn Kho: {selectedReport?.reportId}</span>
           </Space>
         }
         open={isDetailModalOpen}
@@ -172,16 +230,19 @@ export default function InventoryReportTab({
           <div>
             <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }}>
               <Descriptions.Item label="Mã biên bản">
-                <Text code>{selectedReport.reportId}</Text>
+                <Tag color="blue">{selectedReport.reportId}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Thời gian tạo">
                 {formatDateTime(selectedReport.createdAt)}
               </Descriptions.Item>
               <Descriptions.Item label="Người lập báo cáo">
-                {selectedReport.createdBy?.fullName || 'Thủ kho'}
+                {selectedReport.createdBy?.fullName ||
+                  selectedReport.createdBy?.username ||
+                  selectedReport.createdBy?.employeeId ||
+                  'Thủ kho'}
               </Descriptions.Item>
               <Descriptions.Item label="Ghi chú đợt kiểm kê">
-                <strong>{selectedReport.note}</strong>
+                <strong>{selectedReport.auditTitle || selectedReport.note || 'Kiểm kê định kỳ kho'}</strong>
               </Descriptions.Item>
             </Descriptions>
 
@@ -190,11 +251,13 @@ export default function InventoryReportTab({
             </Divider>
 
             <Table
+              loading={detailLoading}
               columns={discrepancyColumns}
-              dataSource={selectedReport.discrepancies || []}
-              rowKey="productId"
+              dataSource={selectedReport.items || selectedReport.discrepancies || []}
+              rowKey={(r) => r.productId || Math.random()}
               pagination={false}
               size="middle"
+              bordered
             />
           </div>
         )}

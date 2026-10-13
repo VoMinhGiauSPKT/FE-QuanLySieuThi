@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   Button,
@@ -11,6 +11,8 @@ import {
   InputNumber,
   DatePicker,
   Divider,
+  Select,
+  Tag,
 } from 'antd'
 import {
   PlusOutlined,
@@ -20,28 +22,78 @@ import {
   EyeOutlined,
 } from '@ant-design/icons'
 import { formatCurrency, formatDateTime, formatDate } from '../../../../../utils/formatters'
+import { usePurchaseReceiptStore } from '../../../../../stores/purchaseReceiptStore'
+import { useCategoryStore } from '../../../../../stores/categoryStore'
 
 const { Text, Title } = Typography
 
 export default function ImportReceiptView({
-  receipts,
-  loading,
+  receipts: propReceipts,
+  loading: propLoading,
   onCreateReceipt,
-  creating,
+  creating: propCreating,
   onRefresh,
+  categories: propCategories,
 }) {
+  const receiptStore = usePurchaseReceiptStore()
+  const categoryStore = useCategoryStore()
+
+  const receipts = propReceipts ?? receiptStore.receipts
+  const loading = propLoading ?? receiptStore.loading
+  const creating = propCreating ?? receiptStore.creating
+  const categories = propCategories && propCategories.length > 0
+    ? propCategories
+    : (categoryStore.allCategories.length > 0 ? categoryStore.allCategories : categoryStore.categories)
+
   const safeReceipts = Array.isArray(receipts) ? receipts : []
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [form] = Form.useForm()
   const [selectedReceipt, setSelectedReceipt] = useState(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  useEffect(() => {
+    if (!propReceipts) {
+      receiptStore.fetchReceipts({ limit: 20 })
+    }
+    if (!propCategories || propCategories.length === 0) {
+      categoryStore.fetchAllCategories()
+    }
+  }, [propReceipts, propCategories])
+
+  const handleViewDetail = async (record) => {
+    setSelectedReceipt(record)
+    setIsDetailModalOpen(true)
+    setDetailLoading(true)
+    try {
+      const data = await receiptStore.fetchReceiptDetail(record.voucherId)
+      if (data) {
+        setSelectedReceipt(data)
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải chi tiết phiếu nhập:', err)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    } else {
+      receiptStore.fetchReceipts({ limit: 20 })
+    }
+  }
+
+  const defaultCatId = categories && categories.length > 0 ? categories[0].categoryId : 'LSP001'
 
   // Danh sách các dòng mặt hàng nhập trong Form
   const [items, setItems] = useState([
     {
       key: 1,
       productName: '',
+      categoryId: defaultCatId,
       purchasedQuantity: 10,
       purchasePrice: 10000,
       unitPrice: 15000,
@@ -55,6 +107,7 @@ export default function ImportReceiptView({
       {
         key: Date.now(),
         productName: '',
+        categoryId: defaultCatId,
         purchasedQuantity: 10,
         purchasePrice: 10000,
         unitPrice: 15000,
@@ -93,6 +146,7 @@ export default function ImportReceiptView({
       note: values.note || 'Nhập hàng vào kho',
       items: items.map((it) => ({
         productName: it.productName.trim(),
+        categoryId: it.categoryId || defaultCatId,
         purchasedQuantity: Number(it.purchasedQuantity),
         purchasePrice: Number(it.purchasePrice),
         unitPrice: Number(it.unitPrice),
@@ -100,13 +154,14 @@ export default function ImportReceiptView({
       })),
     }
 
-    const ok = await onCreateReceipt(payload)
+    const ok = onCreateReceipt ? await onCreateReceipt(payload) : await receiptStore.createReceipt(payload)
     if (ok) {
       form.resetFields()
       setItems([
         {
           key: 1,
           productName: '',
+          categoryId: defaultCatId,
           purchasedQuantity: 10,
           purchasePrice: 10000,
           unitPrice: 15000,
@@ -122,7 +177,7 @@ export default function ImportReceiptView({
       title: 'Mã Phiếu',
       dataIndex: 'voucherId',
       key: 'voucherId',
-      render: (id) => <Text code>{id ? id.substring(0, 8) + '...' : 'N/A'}</Text>,
+      render: (id) => <Tag color="blue">{id}</Tag>,
     },
     {
       title: 'Nhà Cung Cấp',
@@ -159,10 +214,7 @@ export default function ImportReceiptView({
         <Button
           type="text"
           icon={<EyeOutlined style={{ color: '#1890ff' }} />}
-          onClick={() => {
-            setSelectedReceipt(record)
-            setIsDetailModalOpen(true)
-          }}
+          onClick={() => handleViewDetail(record)}
         >
           Chi Tiết
         </Button>
@@ -184,7 +236,7 @@ export default function ImportReceiptView({
             >
               Lập Phiếu Nhập Mới
             </Button>
-            <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
               Làm Mới
             </Button>
           </Space>
@@ -249,7 +301,7 @@ export default function ImportReceiptView({
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
                 <div>
                   <Text style={{ fontSize: 12 }}>Tên Sản Phẩm:</Text>
                   <Input
@@ -257,6 +309,25 @@ export default function ImportReceiptView({
                     value={item.productName}
                     onChange={(e) => handleItemFieldChange(item.key, 'productName', e.target.value)}
                   />
+                </div>
+                <div>
+                  <Text style={{ fontSize: 12 }}>Loại Sản Phẩm:</Text>
+                  <Select
+                    placeholder="Chọn loại SP"
+                    style={{ width: '100%' }}
+                    value={item.categoryId || defaultCatId}
+                    onChange={(val) => handleItemFieldChange(item.key, 'categoryId', val)}
+                  >
+                    {categories && categories.length > 0 ? (
+                      categories.map((c) => (
+                        <Select.Option key={c.categoryId} value={c.categoryId}>
+                          {c.categoryName} ({c.categoryId})
+                        </Select.Option>
+                      ))
+                    ) : (
+                      <Select.Option value="LSP001">Mặc định (LSP001)</Select.Option>
+                    )}
+                  </Select>
                 </div>
                 <div>
                   <Text style={{ fontSize: 12 }}>Số Lượng Nhập:</Text>
@@ -346,7 +417,12 @@ export default function ImportReceiptView({
 
       {/* Modal chi tiết phiếu nhập */}
       <Modal
-        title="Chi Tiết Phiếu Nhập Hàng"
+        title={
+          <Space>
+            <FileTextOutlined style={{ color: '#1890ff' }} />
+            <span>Chi Tiết Phiếu Nhập Hàng: {selectedReceipt?.voucherId}</span>
+          </Space>
+        }
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={[
@@ -354,28 +430,98 @@ export default function ImportReceiptView({
             Đóng
           </Button>,
         ]}
-        width={700}
+        width={800}
       >
         {selectedReceipt && (
           <div>
-            <p>
-              Nhà cung cấp: <strong>{selectedReceipt.supplierName}</strong>
-            </p>
-            <p>Thời gian: {formatDateTime(selectedReceipt.createdAt)}</p>
-            <p>
-              Tổng tiền:{' '}
-              <strong style={{ color: '#1890ff' }}>{formatCurrency(selectedReceipt.totalAmount)}</strong>
-            </p>
-            <Divider style={{ margin: '12px 0' }} />
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '8px 16px',
+                padding: '12px 16px',
+                background: '#f8fafd',
+                border: '1px solid #e6f0fa',
+                borderRadius: 8,
+                marginBottom: 16,
+                fontSize: 13,
+              }}
+            >
+              <div>
+                <Text type="secondary">Mã phiếu nhập: </Text>
+                <Tag color="blue">{selectedReceipt.voucherId}</Tag>
+              </div>
+              <div>
+                <Text type="secondary">Nhà cung cấp: </Text>
+                <Text strong>{selectedReceipt.supplierName}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Thời gian: </Text>
+                <Text strong>{formatDateTime(selectedReceipt.createdAt)}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Người lập: </Text>
+                <Text strong>
+                  {selectedReceipt.createdBy?.fullName ||
+                    selectedReceipt.createdBy?.username ||
+                    selectedReceipt.createdBy?.employeeId ||
+                    'Thủ kho'}
+                </Text>
+              </div>
+              <div style={{ gridColumn: '1 / -1', borderTop: '1px dashed #d9d9d9', paddingTop: 8, marginTop: 4 }}>
+                <Text type="secondary">Tổng giá trị phiếu: </Text>
+                <Text strong style={{ color: '#1890ff', fontSize: 16 }}>
+                  {formatCurrency(selectedReceipt.totalAmount)}
+                </Text>
+              </div>
+            </div>
+
+            <Text strong style={{ fontSize: 14, display: 'block', marginBottom: 8 }}>
+              Danh Sách Mặt Hàng Nhập Kho:
+            </Text>
             <Table
+              loading={detailLoading}
               columns={[
-                { title: 'Tên Sản Phẩm', dataIndex: 'productName', key: 'productName' },
-                { title: 'SL Nhập', dataIndex: 'purchasedQuantity', key: 'purchasedQuantity' },
+                {
+                  title: 'Mã SP',
+                  dataIndex: 'productId',
+                  key: 'productId',
+                  width: 90,
+                  render: (id) => <Tag color="blue">{id}</Tag>,
+                },
+                {
+                  title: 'Tên Sản Phẩm',
+                  dataIndex: 'productName',
+                  key: 'productName',
+                  render: (name) => <Text strong>{name}</Text>,
+                },
+                {
+                  title: 'Loại SP',
+                  dataIndex: 'categoryName',
+                  key: 'categoryName',
+                  render: (cat) => (cat ? <Tag color="cyan">{cat}</Tag> : '-'),
+                },
+                {
+                  title: 'SL Nhập',
+                  dataIndex: 'purchasedQuantity',
+                  key: 'purchasedQuantity',
+                  align: 'center',
+                  width: 90,
+                },
                 {
                   title: 'Giá Nhập',
                   dataIndex: 'purchasePrice',
                   key: 'purchasePrice',
+                  align: 'right',
                   render: (p) => formatCurrency(p),
+                },
+                {
+                  title: 'Thành Tiền',
+                  dataIndex: 'lineTotal',
+                  key: 'lineTotal',
+                  align: 'right',
+                  render: (total, r) =>
+                    formatCurrency(total || (r.purchasedQuantity * r.purchasePrice)),
                 },
                 {
                   title: 'HSD',
@@ -384,10 +530,11 @@ export default function ImportReceiptView({
                   render: (d) => formatDate(d),
                 },
               ]}
-              dataSource={selectedReceipt.importedProducts || []}
-              rowKey="productId"
+              dataSource={selectedReceipt.items || selectedReceipt.importedProducts || []}
+              rowKey={(r) => r.purchaseDetailId || r.productId || Math.random()}
               pagination={false}
               size="small"
+              bordered
             />
           </div>
         )}

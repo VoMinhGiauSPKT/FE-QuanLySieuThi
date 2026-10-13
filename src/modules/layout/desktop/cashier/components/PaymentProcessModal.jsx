@@ -208,8 +208,8 @@ export default function PaymentProcessModal({
             {paymentMethod === 'CASH'
               ? 'Xác Nhận Thu Tiền & Hoàn Tất'
               : vnpayUrl
-              ? 'Hoàn Tất Sau Khi Khách Quét Mã'
-              : 'Tạo Mã Thanh Toán VNPay'}
+                ? 'Hoàn Tất Sau Khi Khách Quét Mã'
+                : 'Tạo Mã Thanh Toán VNPay'}
           </Button>
         </Space>
       </div>

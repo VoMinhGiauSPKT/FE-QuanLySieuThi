@@ -31,6 +31,7 @@ export default function InventoryDesktop({
   onCreateReceipt,
   creatingReceipt,
   onRefreshReceipts,
+  categories = [],
   // Low stock alerts
   lowStockItems,
   loadingLowStock,
@@ -78,6 +79,7 @@ export default function InventoryDesktop({
           onCreateReceipt={onCreateReceipt}
           creating={creatingReceipt}
           onRefresh={onRefreshReceipts}
+          categories={categories}
         />
       ),
     },

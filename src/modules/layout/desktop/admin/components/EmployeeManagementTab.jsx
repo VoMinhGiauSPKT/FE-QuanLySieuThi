@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Table,
   Button,
@@ -22,13 +22,14 @@ import {
 import { getRoleTagColor, getRoleDisplayName } from '../../../../../utils/roleHelper'
 import { USER_ROLES } from '../../../../../constants/roles'
 import { formatDateTime } from '../../../../../utils/formatters'
+import { useEmployeeStore } from '../../../../../stores/employeeStore'
 
 const { Text } = Typography
 
 export default function EmployeeManagementTab({
-  employees,
-  loading,
-  pagination,
+  employees: propEmployees,
+  loading: propLoading,
+  pagination: propPagination,
   onTableChange,
   onSearch,
   onCreateEmployee,
@@ -36,6 +37,12 @@ export default function EmployeeManagementTab({
   onDeleteEmployee,
   onRefresh,
 }) {
+  const store = useEmployeeStore()
+
+  const employees = propEmployees ?? store.employees
+  const loading = propLoading ?? store.loading
+  const pagination = propPagination ?? store.pagination
+
   const safeEmployees = Array.isArray(employees) ? employees : []
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -48,20 +55,48 @@ export default function EmployeeManagementTab({
   const [selectedRole, setSelectedRole] = useState(undefined)
   const [selectedStatus, setSelectedStatus] = useState(undefined)
 
+  useEffect(() => {
+    if (!propEmployees) {
+      store.fetchEmployees(1, 8, {})
+    }
+  }, [propEmployees])
+
   const handleApplyFilter = () => {
-    onSearch({
+    const filters = {
       keyword,
       position: selectedRole,
       status: selectedStatus,
-    })
+    }
+    if (onSearch) {
+      onSearch(filters)
+    } else {
+      store.fetchEmployees(1, pagination?.pageSize || 8, filters)
+    }
   }
 
   const handleResetFilter = () => {
     setKeyword('')
     setSelectedRole(undefined)
     setSelectedStatus(undefined)
-    if (onRefresh) onRefresh()
-    else onSearch({})
+    if (onRefresh) {
+      onRefresh()
+    } else if (onSearch) {
+      onSearch({})
+    } else {
+      store.fetchEmployees(1, pagination?.pageSize || 8, {})
+    }
+  }
+
+  const handleTableChange = (pag) => {
+    if (onTableChange) {
+      onTableChange(pag)
+    } else {
+      store.fetchEmployees(pag.current, pag.pageSize, {
+        keyword,
+        position: selectedRole,
+        status: selectedStatus,
+      })
+    }
   }
 
   const handleOpenEdit = (emp) => {
@@ -142,7 +177,10 @@ export default function EmployeeManagementTab({
             <Popconfirm
               title="Khóa tài khoản nhân viên?"
               description="Nhân viên này sẽ không thể đăng nhập vào hệ thống!"
-              onConfirm={() => onDeleteEmployee(record.employeeId)}
+              onConfirm={() => {
+                if (onDeleteEmployee) onDeleteEmployee(record.employeeId)
+                else store.deleteEmployee(record.employeeId)
+              }}
               okText="Đồng ý khóa"
               cancelText="Hủy"
               okType="danger"
@@ -218,7 +256,7 @@ export default function EmployeeManagementTab({
           rowKey="employeeId"
           loading={loading}
           pagination={pagination}
-          onChange={onTableChange}
+          onChange={handleTableChange}
         />
       </Card>
 
@@ -234,7 +272,7 @@ export default function EmployeeManagementTab({
           form={createForm}
           layout="vertical"
           onFinish={async (values) => {
-            const ok = await onCreateEmployee(values)
+            const ok = onCreateEmployee ? await onCreateEmployee(values) : await store.createEmployee(values)
             if (ok) {
               createForm.resetFields()
               setIsCreateModalOpen(false)
@@ -313,7 +351,9 @@ export default function EmployeeManagementTab({
           layout="vertical"
           onFinish={async (values) => {
             if (editingEmployee) {
-              const ok = await onUpdateEmployee(editingEmployee.employeeId, values)
+              const ok = onUpdateEmployee
+                ? await onUpdateEmployee(editingEmployee.employeeId, values)
+                : await store.updateEmployee(editingEmployee.employeeId, values)
               if (ok) {
                 setIsEditModalOpen(false)
               }
