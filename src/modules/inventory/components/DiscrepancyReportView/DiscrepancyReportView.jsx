@@ -12,11 +12,13 @@ import {
   InputNumber,
   Divider,
   Alert,
+  Descriptions,
 } from 'antd'
 import {
   FileAddOutlined,
   ReloadOutlined,
   EyeOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { formatDateTime } from '../../../../utils/formatters'
 import { useReportStore } from '../../../../stores/reportStore'
@@ -59,6 +61,7 @@ export default function DiscrepancyReportView() {
   }
 
   const handleOpenCreateModal = () => {
+    form.resetFields()
     const initial = {}
     safeProducts.forEach((p) => {
       initial[p.productId] = {
@@ -93,18 +96,18 @@ export default function DiscrepancyReportView() {
           actualQuantity: actual,
           systemQuantity: system,
           difference: diff,
-          reason: item.reason || '',
+          reason: item.reason?.trim() || '',
         }
       })
       .filter((item) => item.difference !== 0 || item.reason)
 
     const payload = {
-      auditTitle: values.auditTitle || 'Biên bản kiểm kê kho',
-      note: values.note || '',
+      auditTitle: values.auditTitle?.trim() || 'Biên bản kiểm kê kho',
+      note: values.note?.trim() || '',
       items: items.map((i) => ({
         productId: i.productId,
         actualQuantity: i.actualQuantity,
-        reason: i.reason || 'Kiểm kê định kỳ',
+        reason: i.reason?.trim() || '',
       })),
     }
 
@@ -287,8 +290,8 @@ export default function DiscrepancyReportView() {
           layout="vertical"
           onFinish={handleFormSubmit}
           initialValues={{
-            auditTitle: 'Kiểm kê kho định kỳ',
-            note: 'Kiểm tra hư hỏng và hạn sử dụng',
+            auditTitle: '',
+            note: '',
           }}
         >
           <Form.Item
@@ -335,7 +338,12 @@ export default function DiscrepancyReportView() {
 
       {/* Modal Xem Chi Tiết Biên Bản */}
       <Modal
-        title={`Chi Tiết Biên Bản Kiểm Kê #${selectedReport?.reportId || ''}`}
+        title={
+          <Space>
+            <FileTextOutlined style={{ color: '#1890ff', fontSize: 18 }} />
+            <span style={{ fontSize: 16, fontWeight: 600 }}>Chi Tiết Biên Bản Kiểm Kê #{selectedReport?.reportId || ''}</span>
+          </Space>
+        }
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={[
@@ -343,42 +351,46 @@ export default function DiscrepancyReportView() {
             Đóng
           </Button>,
         ]}
-        width={850}
+        width={1050}
+        style={{ top: 20 }}
       >
         {selectedReport && (
           <div>
-            <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
-              <div>
-                <Text type="secondary">Mã biên bản: </Text>
-                <Text strong>{selectedReport.reportId}</Text>
-              </div>
-              <div>
-                <Text type="secondary">Tiêu đề: </Text>
-                <Text strong>{selectedReport.auditTitle || selectedReport.reportName}</Text>
-              </div>
-              {selectedReport.note && (
-                <div>
-                  <Text type="secondary">Ghi chú: </Text>
-                  <Text>{selectedReport.note}</Text>
-                </div>
-              )}
-              <div>
-                <Text type="secondary">Người lập: </Text>
+            <Descriptions
+              bordered
+              size="small"
+              column={{ xs: 1, sm: 2, md: 3 }}
+              style={{ marginBottom: 16 }}
+            >
+              <Descriptions.Item label="Mã Biên Bản">
+                <Tag color="blue" style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
+                  {selectedReport.reportId}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Tiêu Đề Biên Bản" span={2}>
+                <Text strong style={{ fontSize: 14 }}>
+                  {selectedReport.auditTitle || selectedReport.reportName}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Người Lập">
                 <Text>{selectedReport.createdBy?.fullName || selectedReport.createdBy?.username || 'Thủ kho'}</Text>
-              </div>
-              <div>
-                <Text type="secondary">Thời gian: </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời Gian Lập">
                 <Text>{formatDateTime(selectedReport.createdAt)}</Text>
-              </div>
-              <div>
-                <Text type="secondary">Số mặt hàng chênh lệch: </Text>
-                <Tag color={selectedReport.totalDiscrepancyItems > 0 ? 'red' : 'green'}>
+              </Descriptions.Item>
+              <Descriptions.Item label="Số Mặt Hàng Lệch">
+                <Tag color={selectedReport.totalDiscrepancyItems > 0 ? 'red' : 'green'} style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                   {selectedReport.totalDiscrepancyItems ?? 0} mặt hàng
                 </Tag>
-              </div>
-            </Space>
+              </Descriptions.Item>
+              {selectedReport.note && (
+                <Descriptions.Item label="Ghi Chú Đợt Kiểm Kê" span={3}>
+                  <Text style={{ fontStyle: 'italic', color: '#434343' }}>{selectedReport.note}</Text>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
 
-            <Divider style={{ margin: '12px 0' }}>Danh Sách Mặt Hàng Đối Soát</Divider>
+            <Divider style={{ margin: '14px 0 12px 0' }}>Danh Sách Mặt Hàng Đối Soát</Divider>
 
             <Table
               dataSource={selectedReport.items || selectedReport.details || []}
@@ -387,40 +399,72 @@ export default function DiscrepancyReportView() {
                   title: 'Mã SP',
                   dataIndex: 'productId',
                   key: 'productId',
-                  render: (id) => <Text code>{id || '-'}</Text>,
+                  width: 105,
+                  render: (id) => (
+                    <Tag color="blue" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {id || '-'}
+                    </Tag>
+                  ),
                 },
                 {
                   title: 'Tên Sản Phẩm',
                   dataIndex: 'productName',
                   key: 'productName',
-                  render: (t) => <Text strong>{t}</Text>,
+                  width: 170,
+                  render: (t) => (
+                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {t}
+                    </span>
+                  ),
                 },
                 {
                   title: 'Ngành Hàng',
                   dataIndex: 'categoryName',
                   key: 'categoryName',
-                  render: (c) => <Tag color="blue">{c || 'Chung'}</Tag>,
+                  width: 130,
+                  render: (c) => (
+                    <Tag color="cyan" style={{ whiteSpace: 'nowrap' }}>
+                      {c || 'Chung'}
+                    </Tag>
+                  ),
                 },
                 {
                   title: 'Tồn HT',
                   dataIndex: 'systemQuantity',
                   key: 'systemQuantity',
-                  render: (q) => <Tag color="cyan">{q}</Tag>,
+                  width: 85,
+                  align: 'center',
+                  render: (q) => (
+                    <Tag color="blue" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {q}
+                    </Tag>
+                  ),
                 },
                 {
                   title: 'Thực Tế',
                   dataIndex: 'actualQuantity',
                   key: 'actualQuantity',
-                  render: (q) => <Tag color="purple">{q}</Tag>,
+                  width: 85,
+                  align: 'center',
+                  render: (q) => (
+                    <Tag color="purple" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {q}
+                    </Tag>
+                  ),
                 },
                 {
                   title: 'Chênh Lệch',
                   dataIndex: 'difference',
                   key: 'difference',
+                  width: 95,
+                  align: 'center',
                   render: (d, record) => {
                     const diff = d !== undefined ? d : (record.actualQuantity - record.systemQuantity)
                     return (
-                      <Tag color={diff === 0 ? 'default' : diff > 0 ? 'green' : 'red'}>
+                      <Tag
+                        color={diff === 0 ? 'default' : diff > 0 ? 'green' : 'red'}
+                        style={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+                      >
                         {diff > 0 ? `+${diff}` : diff}
                       </Tag>
                     )
@@ -430,23 +474,31 @@ export default function DiscrepancyReportView() {
                   title: 'Trạng Thái',
                   dataIndex: 'status',
                   key: 'status',
+                  width: 105,
+                  align: 'center',
                   render: (st, record) => {
                     const diff = record.difference !== undefined ? record.difference : (record.actualQuantity - record.systemQuantity)
                     const statusVal = st || (diff < 0 ? 'SHORTAGE' : diff > 0 ? 'SURPLUS' : 'MATCHED')
-                    if (statusVal === 'SHORTAGE') return <Tag color="red">Thiếu hụt</Tag>
-                    if (statusVal === 'SURPLUS') return <Tag color="green">Dư thừa</Tag>
-                    return <Tag color="default">Khớp</Tag>
+                    if (statusVal === 'SHORTAGE') return <Tag color="red" style={{ whiteSpace: 'nowrap' }}>Thiếu hụt</Tag>
+                    if (statusVal === 'SURPLUS') return <Tag color="green" style={{ whiteSpace: 'nowrap' }}>Dư thừa</Tag>
+                    return <Tag color="default" style={{ whiteSpace: 'nowrap' }}>Khớp</Tag>
                   },
                 },
                 {
-                  title: 'Lý Do',
+                  title: 'Lý Do Chênh Lệch',
                   dataIndex: 'reason',
                   key: 'reason',
+                  render: (reason) => (
+                    <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', minWidth: 200, lineHeight: 1.5 }}>
+                      {reason || <span style={{ color: '#bfbfbf' }}>(Không có ghi chú)</span>}
+                    </div>
+                  ),
                 },
               ]}
               rowKey={(r, idx) => r.detailId || r.productId || idx}
               pagination={false}
-              size="small"
+              size="middle"
+              scroll={{ x: 'max-content' }}
               loading={detailLoading}
             />
           </div>

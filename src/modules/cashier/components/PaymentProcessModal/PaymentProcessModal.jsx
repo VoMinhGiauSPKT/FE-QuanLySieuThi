@@ -28,15 +28,20 @@ export default function PaymentProcessModal({
   onCancel,
   onProcessPayment,
   loading,
+  cancelLoading,
 }) {
   const [paymentMethod, setPaymentMethod] = useState('CASH')
-  const [cashGiven, setCashGiven] = useState(0)
+  const [cashGiven, setCashGiven] = useState(null)
   const [vnpayUrl, setVnpayUrl] = useState('')
 
   if (!open || !invoiceData) return null
 
   const totalAmount = invoiceData?.finalTotal || 0
-  const changeAmount = Math.max(0, cashGiven - totalAmount)
+  const isCashEntered = cashGiven !== null && cashGiven !== undefined
+  const isCashSufficient = isCashEntered && typeof cashGiven === 'number' && cashGiven >= totalAmount
+  const isCashDeficit = isCashEntered && typeof cashGiven === 'number' && cashGiven < totalAmount
+  const changeAmount = isCashSufficient ? (cashGiven - totalAmount) : 0
+  const deficitAmount = isCashDeficit ? (totalAmount - cashGiven) : 0
 
   const handleQuickCash = (amount) => {
     setCashGiven(amount)
@@ -44,13 +49,17 @@ export default function PaymentProcessModal({
 
   const handleConfirm = async () => {
     if (!invoiceData?.invoiceId) return
+    if (paymentMethod === 'CASH' && !isCashSufficient) {
+      return
+    }
+    const methodToSend = paymentMethod === 'VNPAY' ? 'BANK_TRANSFER' : paymentMethod
     const res = await onProcessPayment({
       invoiceId: invoiceData.invoiceId,
-      paymentMethod,
+      paymentMethod: methodToSend,
     })
 
     if (res?.paymentUrl) {
-      setVnpayUrl(res.paymentUrl)
+      window.location.href = res.paymentUrl
     }
   }
 
@@ -66,9 +75,12 @@ export default function PaymentProcessModal({
       }
       open={open}
       onCancel={() => {
-        setVnpayUrl('')
-        onCancel()
+        if (!loading && !cancelLoading) {
+          setVnpayUrl('')
+          onCancel()
+        }
       }}
+      maskClosable={!loading && !cancelLoading}
       footer={null}
       width={560}
       destroyOnClose
@@ -114,16 +126,41 @@ export default function PaymentProcessModal({
       {paymentMethod === 'CASH' ? (
         <Card size="small" className="payment-process-modal__card">
           <div style={{ marginBottom: 12 }}>
-            <Text strong>Tiền khách đưa (VNĐ):</Text>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text strong>
+                Tiền khách đưa (VNĐ): <span style={{ color: '#ff4d4f' }}>*</span>
+              </Text>
+              {isCashDeficit && (
+                <Text type="danger" style={{ fontSize: 13, fontWeight: 600 }}>
+                  (Còn thiếu {formatCurrency(deficitAmount)})
+                </Text>
+              )}
+            </div>
             <InputNumber
               style={{ width: '100%', marginTop: 6 }}
               size="large"
+              placeholder="Nhập số tiền khách đưa..."
               value={cashGiven}
-              onChange={(val) => setCashGiven(val || 0)}
+              onChange={(val) => setCashGiven(val !== null && val !== undefined ? val : null)}
               formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
               parser={(val) => val.replace(/\$\s?|(,*)/g, '')}
               min={0}
+              status={isCashDeficit ? 'error' : ''}
             />
+            {!isCashEntered && (
+              <div style={{ marginTop: 4 }}>
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  * Bắt buộc phải nhập số tiền khách đưa
+                </Text>
+              </div>
+            )}
+            {isCashDeficit && (
+              <div style={{ marginTop: 4 }}>
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  * Số tiền khách đưa phải lớn hơn hoặc bằng tổng tiền ({formatCurrency(totalAmount)})
+                </Text>
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: 12 }}>
@@ -131,7 +168,11 @@ export default function PaymentProcessModal({
               Chọn nhanh:
             </Text>
             <Space size="small" wrap>
-              <Button size="small" onClick={() => handleQuickCash(totalAmount)}>
+              <Button
+                size="small"
+                type={cashGiven === totalAmount ? 'primary' : 'default'}
+                onClick={() => handleQuickCash(totalAmount)}
+              >
                 Đúng tiền ({formatCurrency(totalAmount)})
               </Button>
               <Button size="small" onClick={() => handleQuickCash(50000)}>
@@ -153,61 +194,64 @@ export default function PaymentProcessModal({
 
           <Flex align="center" justify="space-between">
             <Text strong style={{ fontSize: 15 }}>
-              Tiền thừa thối lại:
+              {isCashDeficit ? 'Còn thiếu:' : 'Tiền thừa thối lại:'}
             </Text>
-            <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-              {formatCurrency(changeAmount)}
+            <Title
+              level={4}
+              style={{
+                margin: 0,
+                color: isCashDeficit ? '#ff4d4f' : '#1890ff',
+              }}
+            >
+              {!isCashEntered
+                ? '0 đ'
+                : isCashDeficit
+                  ? formatCurrency(deficitAmount)
+                  : formatCurrency(changeAmount)}
             </Title>
           </Flex>
         </Card>
       ) : (
         <Card size="small" className="payment-process-modal__card">
-          {vnpayUrl ? (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <Alert
-                type="info"
-                message="Đã tạo liên kết thanh toán VNPay!"
-                description="Bấm vào nút bên dưới để chuyển hướng khách sang cổng thanh toán quét mã QR của VNPay."
-                style={{ marginBottom: 16 }}
-              />
-              <Button
-                type="primary"
-                size="large"
-                href={vnpayUrl}
-                target="_blank"
-                icon={<QrcodeOutlined />}
-                style={{ height: 44, borderRadius: 8, backgroundColor: '#005baa' }}
-              >
-                Mở Cổng VNPay Quét Mã
-              </Button>
-            </div>
-          ) : (
-            <div style={{ padding: '8px 0', textAlign: 'center' }}>
-              <Text type="secondary">
-                Hệ thống sẽ kết nối với cổng thanh toán điện tử VNPay để tạo mã QR thanh toán tức thời.
-              </Text>
-            </div>
-          )}
+          <div style={{ textAlign: 'center', padding: '16px 8px' }}>
+            <QrcodeOutlined style={{ fontSize: 44, color: '#005baa', marginBottom: 12 }} />
+            <Title level={4} style={{ margin: '0 0 8px 0', color: '#005baa' }}>
+              Cổng Thanh Toán Trực Tuyến VNPay Sandbox
+            </Title>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+              Bấm nút <strong>"Chuyển Đến Cổng Thanh Toán VNPay"</strong> bên dưới. Hệ thống sẽ kết nối trực tiếp đến cổng VNPay Sandbox để khách quét mã QR hoặc chọn ngân hàng thanh toán.
+            </Text>
+            <Alert
+              type="info"
+              showIcon
+              message="Tự động đồng bộ hóa đơn"
+              description="Sau khi thanh toán thành công, hệ thống sẽ tự động cập nhật hóa đơn sang 'ĐÃ THANH TOÁN' và quay về máy POS. Nếu không chuyển khoản hoặc hủy giao dịch, hóa đơn sẽ tự động chuyển sang 'HỦY' và hoàn trả tồn kho."
+              style={{ textAlign: 'left', fontSize: 13 }}
+            />
+          </div>
         </Card>
       )}
 
       <div className="payment-process-modal__actions">
         <Space>
-          <Button onClick={onCancel}>Hủy Bỏ</Button>
+          <Button onClick={onCancel} loading={cancelLoading} disabled={loading}>
+            Hủy Bỏ
+          </Button>
           <Button
             type="primary"
             size="large"
             icon={<CheckCircleOutlined />}
             loading={loading}
-            disabled={paymentMethod === 'CASH' && cashGiven < totalAmount && cashGiven > 0}
+            disabled={
+              cancelLoading ||
+              (paymentMethod === 'CASH' && !isCashSufficient)
+            }
             onClick={handleConfirm}
             className="confirm-btn"
           >
             {paymentMethod === 'CASH'
               ? 'Xác Nhận Thu Tiền & Hoàn Tất'
-              : vnpayUrl
-                ? 'Hoàn Tất Sau Khi Khách Quét Mã'
-                : 'Tạo Mã Thanh Toán VNPay'}
+              : 'Chuyển Đến Cổng Thanh Toán VNPay'}
           </Button>
         </Space>
       </div>

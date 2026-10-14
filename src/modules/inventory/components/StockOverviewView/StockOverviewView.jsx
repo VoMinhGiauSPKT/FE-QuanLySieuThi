@@ -1,31 +1,25 @@
 import { useState, useEffect } from 'react'
 import {
-  Row,
-  Col,
-  Card,
-  Statistic,
   Table,
-  Tag,
-  Input,
   Button,
   Space,
-  Typography,
+  Tag,
+  Input,
+  Select,
+  Card,
   Modal,
   Form,
   InputNumber,
-  Select,
-  Descriptions,
-  Spin,
+  Typography,
+  Popconfirm,
+  Tooltip,
 } from 'antd'
 import {
-  InboxOutlined,
-  WarningOutlined,
-  CheckCircleOutlined,
   SearchOutlined,
-  ReloadOutlined,
-  CalendarOutlined,
   EditOutlined,
-  EyeOutlined,
+  DeleteOutlined,
+  ReloadOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
 import { formatCurrency, formatDate } from '../../../../utils/formatters'
 import { useProductStore } from '../../../../stores/productStore'
@@ -38,65 +32,99 @@ export default function StockOverviewView() {
   const {
     products,
     loading,
-    detailLoading,
-    selectedProduct,
-    lowStockCount,
+    pagination,
     fetchProducts,
     fetchProductById,
     updateProduct,
-    fetchLowStockAlerts,
   } = useProductStore()
-
   const { categories, allCategories, fetchAllCategories } = useCategoryStore()
 
   const safeCategories = allCategories.length > 0 ? allCategories : categories
   const safeProducts = Array.isArray(products) ? products : []
 
-  const [searchKeyword, setSearchKeyword] = useState('')
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState(null)
   const [editForm] = Form.useForm()
 
+  const [keyword, setKeyword] = useState('')
+  const [status, setStatus] = useState(undefined)
+  const [categoryId, setCategoryId] = useState(undefined)
+
   useEffect(() => {
-    fetchProducts({ limit: 50 })
-    fetchLowStockAlerts(10)
+    fetchProducts(1, 8, {})
     fetchAllCategories()
-  }, [fetchProducts, fetchLowStockAlerts, fetchAllCategories])
+  }, [fetchProducts, fetchAllCategories])
 
-  const handleSearch = () => {
-    fetchProducts({ keyword: searchKeyword.trim(), limit: 50 })
+  const handleApplyFilter = () => {
+    fetchProducts(1, pagination?.pageSize || 8, {
+      keyword: keyword.trim(),
+      categoryId,
+      productStatus: status,
+    })
   }
 
-  const handleRefresh = () => {
-    fetchProducts({ keyword: searchKeyword.trim(), limit: 50 })
-    fetchLowStockAlerts(10)
+  const handleResetFilter = () => {
+    setKeyword('')
+    setStatus(undefined)
+    setCategoryId(undefined)
+    fetchProducts(1, pagination?.pageSize || 8, {})
   }
 
-  const handleOpenDetail = async (record) => {
-    setIsDetailModalOpen(true)
-    await fetchProductById(record.productId)
+  const handleTableChange = (pag) => {
+    fetchProducts(pag.current, pag.pageSize, {
+      keyword: keyword.trim(),
+      categoryId,
+      productStatus: status,
+    })
   }
 
-  const handleOpenEdit = async (record) => {
-    setIsEditModalOpen(true)
-    editForm.resetFields()
-    const product = await fetchProductById(record.productId)
-    if (product) {
-      editForm.setFieldsValue({
-        productName: product.productName,
-        categoryId: product.category?.categoryId || product.categoryId,
-        unitPrice: product.unitPrice,
-        productStatus: product.productStatus || 'ON_SALE',
+  // Chuyển trạng thái mặt hàng sang 'Ngừng bán' khi bấm vào nút thùng rác
+  const handleDiscontinue = async (record) => {
+    const ok = await updateProduct(record.productId, {
+      productStatus: 'DISCONTINUED',
+    })
+    if (ok) {
+      fetchProducts(pagination?.current || 1, pagination?.pageSize || 8, {
+        keyword: keyword.trim(),
+        categoryId,
+        productStatus: status,
       })
     }
   }
 
-  const handleUpdateProduct = async (values) => {
-    if (!selectedProduct?.productId) return
-    const success = await updateProduct(selectedProduct.productId, values)
-    if (success) {
+  // Bấm nút Sửa: Gọi API lấy chi tiết rồi fill dữ liệu vào form
+  const handleOpenEdit = async (record) => {
+    setEditingProduct(record)
+    setIsEditModalOpen(true)
+    const detail = await fetchProductById(record.productId)
+    const prodData = detail || record
+    setEditingProduct(prodData)
+    editForm.setFieldsValue({
+      productName: prodData.productName,
+      categoryId: prodData.category?.categoryId || prodData.categoryId,
+      unitPrice: prodData.unitPrice,
+      productStatus: prodData.productStatus || 'ON_SALE',
+    })
+  }
+
+  const handleEditSubmit = async (values) => {
+    if (!editingProduct?.productId) return
+    const payload = {
+      productName: values.productName,
+      categoryId: values.categoryId,
+      unitPrice: Number(values.unitPrice),
+      productStatus: values.productStatus,
+    }
+    const ok = await updateProduct(editingProduct.productId, payload)
+    if (ok) {
       setIsEditModalOpen(false)
-      fetchProducts({ keyword: searchKeyword.trim(), limit: 50 })
+      editForm.resetFields()
+      setEditingProduct(null)
+      fetchProducts(pagination?.current || 1, pagination?.pageSize || 8, {
+        keyword: keyword.trim(),
+        categoryId,
+        productStatus: status,
+      })
     }
   }
 
@@ -106,280 +134,222 @@ export default function StockOverviewView() {
       dataIndex: 'productId',
       key: 'productId',
       width: 110,
-      render: (id) => <Text code>{id ? String(id).substring(0, 10) : 'N/A'}</Text>,
+      render: (id) => <Tag color="blue" style={{ fontWeight: 600 }}>{id}</Tag>,
     },
     {
       title: 'Tên Sản Phẩm',
       dataIndex: 'productName',
       key: 'productName',
-      render: (name) => <Text strong>{name}</Text>,
+      render: (t) => <Text strong>{t}</Text>,
     },
     {
-      title: 'Danh Mục',
+      title: 'Loại',
       dataIndex: 'categoryName',
       key: 'categoryName',
-      render: (cat, rec) => (
-        <Tag color="blue">{cat || rec.category?.categoryName || 'Sản phẩm'}</Tag>
-      ),
+      render: (c, r) => <Tag color="cyan">{c || r.category?.categoryName || 'Sản phẩm'}</Tag>,
     },
     {
-      title: 'Tồn Kho Hiện Tại',
+      title: 'Tồn Kho',
       dataIndex: 'stockQuantity',
       key: 'stockQuantity',
-      render: (qty) => (
-        <Tag color={qty <= 10 ? 'red' : 'green'} style={{ fontWeight: 600 }}>
-          {qty} đơn vị {qty <= 10 && '(Sắp hết)'}
+      width: 110,
+      render: (q) => (
+        <Tag color={q <= 10 ? 'red' : 'green'} style={{ fontWeight: 600 }}>
+          {q <= 10 && <WarningOutlined />} {q ?? 0}
         </Tag>
       ),
     },
     {
-      title: 'Giá Bán Lẻ',
+      title: 'Giá Bán',
       dataIndex: 'unitPrice',
       key: 'unitPrice',
-      render: (price) => formatCurrency(price),
+      width: 130,
+      render: (p) => formatCurrency(p),
     },
     {
-      title: 'Hạn Sử Dụng (HSD)',
+      title: 'Hạn Sử Dụng',
       dataIndex: 'expirationDate',
       key: 'expirationDate',
-      render: (d) => (
-        <Space>
-          <CalendarOutlined style={{ color: '#8c8c8c' }} />
-          <span>{formatDate(d)}</span>
-        </Space>
-      ),
+      render: (d) => {
+        if (!d) return '-'
+        const isExpired = new Date(d).getTime() < Date.now()
+        if (isExpired) {
+          return (
+            <Space size={6}>
+              <Text style={{ color: '#ff4d4f', fontWeight: 600 }}>{formatDate(d)}</Text>
+              <Tag color="red" style={{ fontWeight: 600 }}>Hết hạn</Tag>
+            </Space>
+          )
+        }
+        return formatDate(d)
+      },
     },
     {
       title: 'Trạng Thái',
       dataIndex: 'productStatus',
       key: 'productStatus',
+      width: 120,
       render: (st) => (
-        <Tag color={st === 'ON_SALE' ? 'cyan' : 'default'}>
-          {st === 'ON_SALE' ? 'Đang kinh doanh' : 'Ngừng bán'}
+        <Tag color={st === 'ON_SALE' ? 'green' : 'default'}>
+          {st === 'ON_SALE' ? 'Đang bán' : 'Ngừng bán'}
         </Tag>
       ),
     },
     {
-      title: 'Thao tác',
+      title: 'Hành động',
       key: 'actions',
-      width: 160,
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleOpenDetail(record)}
-          >
-            Chi Tiết
-          </Button>
-          <Button
-            type="primary"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleOpenEdit(record)}
-          >
-            Sửa
-          </Button>
-        </Space>
-      ),
+      width: 110,
+      render: (_, record) => {
+        const isDiscontinued = record.productStatus === 'DISCONTINUED'
+        return (
+          <Space size="small">
+            <Tooltip title="Chỉnh sửa">
+              <Button
+                type="text"
+                icon={<EditOutlined style={{ color: '#1890ff' }} />}
+                onClick={() => handleOpenEdit(record)}
+              />
+            </Tooltip>
+            <Popconfirm
+              title="Ngừng bán sản phẩm?"
+              description={`Bạn có chắc muốn chuyển "${record.productName}" sang Ngừng bán?`}
+              onConfirm={() => handleDiscontinue(record)}
+              okText="Ngừng bán"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+              disabled={isDiscontinued}
+            >
+              <Tooltip title={isDiscontinued ? 'Đã ngừng bán' : 'Ngừng bán'}>
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  disabled={isDiscontinued}
+                />
+              </Tooltip>
+            </Popconfirm>
+          </Space>
+        )
+      },
     },
   ]
 
   return (
-    <div className="stock-overview-view">
-      {/* Thẻ chỉ số kho */}
-      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={8}>
-          <Card bordered={false} className="stock-overview-view__stat-card stock-overview-view__stat-card--blue">
-            <Statistic
-              title={<Text type="secondary">Tổng Mặt Hàng Quản Lý</Text>}
-              value={safeProducts.length}
-              suffix="Sản phẩm"
-              prefix={<InboxOutlined style={{ color: '#1890ff' }} />}
-            />
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={8}>
-          <Card bordered={false} className="stock-overview-view__stat-card stock-overview-view__stat-card--red">
-            <Statistic
-              title={<Text type="secondary">Hàng Sắp Hết (Tồn Kho &le; 10)</Text>}
-              value={lowStockCount}
-              valueStyle={{ color: '#cf1322' }}
-              suffix="Mặt hàng"
-              prefix={<WarningOutlined style={{ color: '#cf1322' }} />}
-            />
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={8}>
-          <Card bordered={false} className="stock-overview-view__stat-card stock-overview-view__stat-card--green">
-            <Statistic
-              title={<Text type="secondary">Tình Trạng Kho Hàng</Text>}
-              value="Đang hoạt động tốt"
-              valueStyle={{ color: '#52c41a', fontSize: 20 }}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Danh sách sản phẩm trong kho */}
-      <Card
-        title="Danh Mục Sản Phẩm & Tồn Kho Chi Tiết"
-        extra={
-          <Space>
-            <Input
-              placeholder="Tìm theo tên sản phẩm..."
-              prefix={<SearchOutlined />}
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              onPressEnter={handleSearch}
-              style={{ width: 260 }}
-              allowClear
-            />
-            <Button type="primary" onClick={handleSearch}>
-              Tìm Kiếm
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
-              Làm Mới
-            </Button>
-          </Space>
-        }
-        bordered={false}
-        className="stock-overview-view__table-card"
-      >
-        <Table
-          columns={columns}
-          dataSource={safeProducts}
-          rowKey="productId"
-          loading={loading}
-          pagination={{ pageSize: 8 }}
+    <Card title="Quản Lý Danh Sách Mặt Hàng" bordered={false} className="stock-overview-view product-management-tab">
+      <div className="stock-overview-view__filters product-management-tab__filters">
+        <Input
+          placeholder="Tìm theo mã, tên mặt hàng..."
+          prefix={<SearchOutlined />}
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onPressEnter={handleApplyFilter}
+          style={{ width: 250 }}
+          allowClear
         />
-      </Card>
 
-      {/* Modal Xem Chi Tiết Sản Phẩm */}
-      <Modal
-        title={`Chi Tiết Sản Phẩm: ${selectedProduct?.productName || ''}`}
-        open={isDetailModalOpen}
-        onCancel={() => setIsDetailModalOpen(false)}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)}>
-            Đóng
-          </Button>,
-        ]}
-        width={650}
-      >
-        {detailLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Spin size="large" tip="Đang tải dữ liệu chi tiết..." />
-          </div>
-        ) : selectedProduct ? (
-          <Descriptions bordered column={1} size="middle" style={{ marginTop: 16 }}>
-            <Descriptions.Item label="Mã Sản Phẩm">
-              <Text code>{selectedProduct.productId}</Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Tên Sản Phẩm">
-              <Text strong>{selectedProduct.productName}</Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngành Hàng / Danh Mục">
-              <Tag color="blue">
-                {selectedProduct.category?.categoryName || selectedProduct.categoryName || 'Sản phẩm'}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Đơn Giá Bán Lẻ">
-              <Text strong style={{ color: '#2563eb', fontSize: 16 }}>
-                {formatCurrency(selectedProduct.unitPrice)}
-              </Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Số Lượng Tồn Kho">
-              <Tag
-                color={selectedProduct.stockQuantity <= 10 ? 'red' : 'green'}
-                style={{ fontSize: 14, padding: '2px 8px' }}
-              >
-                {selectedProduct.stockQuantity} đơn vị
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Hạn Sử Dụng (HSD)">
-              {formatDate(selectedProduct.expirationDate)}
-            </Descriptions.Item>
-            <Descriptions.Item label="Trạng Thái Kinh Doanh">
-              <Tag color={selectedProduct.productStatus === 'ON_SALE' ? 'cyan' : 'default'}>
-                {selectedProduct.productStatus === 'ON_SALE' ? 'Đang kinh doanh' : 'Ngừng bán'}
-              </Tag>
-            </Descriptions.Item>
-          </Descriptions>
-        ) : null}
-      </Modal>
+        <Select
+          placeholder="Lọc theo loại sản phẩm"
+          value={categoryId}
+          onChange={setCategoryId}
+          style={{ width: 180 }}
+          allowClear
+        >
+          {safeCategories.map((c) => (
+            <Select.Option key={c.categoryId} value={c.categoryId}>
+              {c.categoryName}
+            </Select.Option>
+          ))}
+        </Select>
+
+        <Select
+          placeholder="Trạng thái"
+          value={status}
+          onChange={setStatus}
+          style={{ width: 140 }}
+          allowClear
+        >
+          <Select.Option value="ON_SALE">Đang bán</Select.Option>
+          <Select.Option value="DISCONTINUED">Ngừng bán</Select.Option>
+        </Select>
+
+        <Button type="primary" onClick={handleApplyFilter}>
+          Lọc
+        </Button>
+        <Button icon={<ReloadOutlined />} onClick={handleResetFilter}>
+          Đặt Lại
+        </Button>
+      </div>
+
+      <Table
+        columns={columns}
+        dataSource={safeProducts}
+        rowKey="productId"
+        loading={loading}
+        pagination={{
+          current: pagination?.current || 1,
+          pageSize: pagination?.pageSize || 8,
+          total: pagination?.total || safeProducts.length,
+          showTotal: (total) => `Tổng cộng ${total} sản phẩm`,
+        }}
+        onChange={handleTableChange}
+      />
 
       {/* Modal Chỉnh Sửa Sản Phẩm */}
       <Modal
-        title="Chỉnh Sửa Thông Tin Sản Phẩm"
+        title={`Cập Nhật Mặt Hàng: ${editingProduct?.productName || ''}`}
         open={isEditModalOpen}
         onCancel={() => setIsEditModalOpen(false)}
         footer={null}
         destroyOnClose
       >
-        <Spin spinning={detailLoading}>
-          <Form form={editForm} layout="vertical" onFinish={handleUpdateProduct}>
-            <Form.Item
-              name="productName"
-              label="Tên Sản Phẩm"
-              rules={[{ required: true, message: 'Vui lòng nhập tên sản phẩm' }]}
-            >
-              <Input placeholder="Tên sản phẩm" />
-            </Form.Item>
+        <Form form={editForm} layout="vertical" onFinish={handleEditSubmit}>
+          <Form.Item
+            name="productName"
+            label="Tên Mặt Hàng"
+            rules={[{ required: true, message: 'Vui lòng nhập tên mặt hàng!' }]}
+          >
+            <Input />
+          </Form.Item>
 
-            <Form.Item
-              name="categoryId"
-              label="Ngành Hàng / Phân Loại"
-              rules={[{ required: true, message: 'Vui lòng chọn loại sản phẩm' }]}
-            >
-              <Select placeholder="Chọn loại sản phẩm">
-                {safeCategories.map((cat) => (
-                  <Select.Option key={cat.categoryId} value={cat.categoryId}>
-                    {cat.categoryName}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
+          <Form.Item
+            name="categoryId"
+            label="Ngành Hàng / Loại Sản Phẩm"
+            rules={[{ required: true, message: 'Vui lòng chọn loại sản phẩm!' }]}
+          >
+            <Select placeholder="Chọn ngành hàng">
+              {safeCategories.map((c) => (
+                <Select.Option key={c.categoryId} value={c.categoryId}>
+                  {c.categoryName}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-            <Form.Item
-              name="unitPrice"
-              label="Đơn Giá Bán Lẻ (VNĐ)"
-              rules={[{ required: true, message: 'Vui lòng nhập đơn giá' }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                min={0}
-                step={500}
-                formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                parser={(val) => val.replace(/\$\s?|(,*)/g, '')}
-              />
-            </Form.Item>
+          <Form.Item
+            name="unitPrice"
+            label="Giá Bán Lẻ (VNĐ)"
+            rules={[{ required: true, message: 'Vui lòng nhập giá bán!' }]}
+          >
+            <InputNumber min={0} step={500} style={{ width: '100%' }} />
+          </Form.Item>
 
-            <Form.Item
-              name="productStatus"
-              label="Trạng Thái Kinh Doanh"
-              rules={[{ required: true }]}
-            >
-              <Select>
-                <Select.Option value="ON_SALE">Đang kinh doanh</Select.Option>
-                <Select.Option value="DISCONTINUED">Ngừng bán</Select.Option>
-              </Select>
-            </Form.Item>
+          <Form.Item name="productStatus" label="Trạng Thái Kinh Doanh">
+            <Select>
+              <Select.Option value="ON_SALE">Đang bán (ON_SALE)</Select.Option>
+              <Select.Option value="DISCONTINUED">Ngừng bán (DISCONTINUED)</Select.Option>
+            </Select>
+          </Form.Item>
 
-            <div style={{ textAlign: 'right', marginTop: 24 }}>
-              <Space>
-                <Button onClick={() => setIsEditModalOpen(false)}>Hủy</Button>
-                <Button type="primary" htmlType="submit">
-                  Lưu Thay Đổi
-                </Button>
-              </Space>
-            </div>
-          </Form>
-        </Spin>
+          <div style={{ textAlign: 'right', marginTop: 24 }}>
+            <Space>
+              <Button onClick={() => setIsEditModalOpen(false)}>Hủy</Button>
+              <Button type="primary" htmlType="submit">
+                Lưu Thay Đổi
+              </Button>
+            </Space>
+          </div>
+        </Form>
       </Modal>
-    </div>
+    </Card>
   )
 }

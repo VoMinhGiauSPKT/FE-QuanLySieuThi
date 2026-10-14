@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Tabs, Typography, message } from 'antd'
 import {
   ShoppingCartOutlined,
@@ -23,12 +24,14 @@ const { Title, Text } = Typography
 
 export default function CashierPage() {
   const user = useAuthStore((state) => state.user)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Stores
   const { cartItems, customer, usePoints, clearCart, setCustomer, getSummary } = useCartStore()
   const fetchProducts = useProductStore((state) => state.fetchProducts)
   const createCustomer = useCustomerStore((state) => state.createCustomer)
   const createInvoice = useInvoiceStore((state) => state.createInvoice)
+  const cancelInvoice = useInvoiceStore((state) => state.cancelInvoice)
   const processPayment = usePaymentStore((state) => state.processPayment)
 
   // Tab & Modals State
@@ -41,11 +44,37 @@ export default function CashierPage() {
   const [pendingInvoice, setPendingInvoice] = useState(null)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false)
+  const [isCancelingInvoice, setIsCancelingInvoice] = useState(false)
 
   // Load products when mounting
   useEffect(() => {
     fetchProducts({ limit: 100 })
   }, [fetchProducts])
+
+  // Lắng nghe kết quả điều hướng trở lại từ cổng VNPay Sandbox
+  useEffect(() => {
+    const vnpayStatus = searchParams.get('vnpay_status')
+    const invoiceId = searchParams.get('invoice_id')
+    const txnRef = searchParams.get('txnRef')
+
+    if (vnpayStatus === 'success') {
+      message.success(`Thanh toán VNPay thành công cho hóa đơn #${invoiceId || txnRef || ''}!`)
+      clearCart()
+      fetchProducts({ limit: 100 })
+      searchParams.delete('vnpay_status')
+      searchParams.delete('invoice_id')
+      searchParams.delete('txnRef')
+      setSearchParams(searchParams, { replace: true })
+    } else if (vnpayStatus === 'cancel') {
+      message.warning(`Giao dịch VNPay đã bị hủy. Hóa đơn #${invoiceId || txnRef || ''} đã chuyển sang trạng thái HỦY và hoàn lại tồn kho!`)
+      fetchProducts({ limit: 100 })
+      searchParams.delete('vnpay_status')
+      searchParams.delete('invoice_id')
+      searchParams.delete('txnRef')
+      searchParams.delete('code')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams, clearCart, fetchProducts])
 
   // Đăng ký khách hàng mới
   const handleOpenRegisterModal = (phone = '') => {
@@ -117,18 +146,38 @@ export default function CashierPage() {
         amount: pendingInvoice?.finalTotal,
       })
 
-      if (res?.data?.paymentUrl) {
-        return { paymentUrl: res.data.paymentUrl }
+      const paymentUrl = res?.paymentUrl || res?.data?.paymentUrl
+      if (paymentUrl) {
+        // Có link VNPay sandbox -> chuyển hướng trình duyệt ngay lập tức sang Sandbox!
+        window.location.href = paymentUrl
+        return { paymentUrl }
       }
 
-      message.success('Thanh toán thành công!')
+      // Thanh toán tiền mặt thành công tại quầy
+      message.success('Thanh toán tiền mặt thành công!')
       setIsPaymentModalOpen(false)
       setPendingInvoice(null)
       clearCart()
+      fetchProducts({ limit: 100 })
       return { success: true }
     } finally {
       setIsProcessingPayment(false)
     }
+  }
+
+  // Hủy hóa đơn khi bấm Hủy trong modal thanh toán
+  const handleCancelPayment = async () => {
+    if (pendingInvoice?.invoiceId) {
+      setIsCancelingInvoice(true)
+      try {
+        await cancelInvoice(pendingInvoice.invoiceId)
+        await fetchProducts({ limit: 100 })
+      } finally {
+        setIsCancelingInvoice(false)
+      }
+    }
+    setIsPaymentModalOpen(false)
+    setPendingInvoice(null)
   }
 
   const tabItems = [
@@ -211,12 +260,10 @@ export default function CashierPage() {
         <PaymentProcessModal
           open={isPaymentModalOpen}
           invoiceData={pendingInvoice}
-          onCancel={() => {
-            setIsPaymentModalOpen(false)
-            setPendingInvoice(null)
-          }}
+          onCancel={handleCancelPayment}
           onProcessPayment={handleProcessPayment}
           loading={isProcessingPayment}
+          cancelLoading={isCancelingInvoice}
         />
       )}
     </DefaultLayout>

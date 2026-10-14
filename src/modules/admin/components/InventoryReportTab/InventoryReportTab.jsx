@@ -13,6 +13,7 @@ import {
 import {
   FileSearchOutlined,
   ReloadOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { formatDateTime } from '../../../../utils/formatters'
 import { useReportStore } from '../../../../stores/reportStore'
@@ -108,40 +109,72 @@ export default function InventoryReportTab() {
       title: 'Mã SP',
       dataIndex: 'productId',
       key: 'productId',
-      width: 110,
-      render: (id) => <Tag color="blue">{id}</Tag>,
+      width: 105,
+      render: (id) => (
+        <Tag color="blue" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+          {id || '-'}
+        </Tag>
+      ),
     },
     {
       title: 'Tên Mặt Hàng',
       dataIndex: 'productName',
       key: 'productName',
-      render: (name) => <Text strong>{name}</Text>,
+      width: 170,
+      render: (name) => (
+        <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+          {name}
+        </span>
+      ),
     },
     {
       title: 'Ngành Hàng',
       dataIndex: 'categoryName',
       key: 'categoryName',
-      render: (cat) => <Tag color="cyan">{cat || 'Sản phẩm'}</Tag>,
+      width: 130,
+      render: (cat) => (
+        <Tag color="cyan" style={{ whiteSpace: 'nowrap' }}>
+          {cat || 'Chung'}
+        </Tag>
+      ),
     },
     {
-      title: 'Tồn Hệ Thống',
+      title: 'Tồn HT',
       dataIndex: 'systemQuantity',
       key: 'systemQuantity',
-      render: (q) => <Text>{q}</Text>,
+      width: 85,
+      align: 'center',
+      render: (q) => (
+        <Tag color="blue" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+          {q}
+        </Tag>
+      ),
     },
     {
-      title: 'Tồn Thực Tế',
+      title: 'Thực Tế',
       dataIndex: 'actualQuantity',
       key: 'actualQuantity',
-      render: (q) => <Text strong>{q}</Text>,
+      width: 85,
+      align: 'center',
+      render: (q) => (
+        <Tag color="purple" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+          {q}
+        </Tag>
+      ),
     },
     {
       title: 'Chênh Lệch',
+      dataIndex: 'difference',
       key: 'difference',
-      render: (_, r) => {
-        const diff = r.difference ?? r.discrepancyQuantity ?? (r.actualQuantity - r.systemQuantity)
+      width: 95,
+      align: 'center',
+      render: (d, record) => {
+        const diff = d !== undefined ? d : (record.actualQuantity - record.systemQuantity)
         return (
-          <Tag color={diff === 0 ? 'default' : diff > 0 ? 'green' : 'red'}>
+          <Tag
+            color={diff === 0 ? 'default' : diff > 0 ? 'green' : 'red'}
+            style={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+          >
             {diff > 0 ? `+${diff}` : diff}
           </Tag>
         )
@@ -151,17 +184,25 @@ export default function InventoryReportTab() {
       title: 'Trạng Thái',
       dataIndex: 'status',
       key: 'status',
-      render: (st) => (
-        <Tag color={st === 'SHORTAGE' ? 'red' : st === 'SURPLUS' ? 'green' : 'default'}>
-          {st === 'SHORTAGE' ? 'Thiếu hàng' : st === 'SURPLUS' ? 'Thừa hàng' : (st || 'Khớp')}
-        </Tag>
-      ),
+      width: 105,
+      align: 'center',
+      render: (st, record) => {
+        const diff = record.difference !== undefined ? record.difference : (record.actualQuantity - record.systemQuantity)
+        const statusVal = st || (diff < 0 ? 'SHORTAGE' : diff > 0 ? 'SURPLUS' : 'MATCHED')
+        if (statusVal === 'SHORTAGE') return <Tag color="red" style={{ whiteSpace: 'nowrap' }}>Thiếu hụt</Tag>
+        if (statusVal === 'SURPLUS') return <Tag color="green" style={{ whiteSpace: 'nowrap' }}>Dư thừa</Tag>
+        return <Tag color="default" style={{ whiteSpace: 'nowrap' }}>Khớp</Tag>
+      },
     },
     {
-      title: 'Lý Do & Giải Trình',
+      title: 'Lý Do Chênh Lệch',
       dataIndex: 'reason',
       key: 'reason',
-      render: (r) => r || <Text type="secondary">-</Text>,
+      render: (reason) => (
+        <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', minWidth: 200, lineHeight: 1.5 }}>
+          {reason || <span style={{ color: '#bfbfbf' }}>(Không có ghi chú)</span>}
+        </div>
+      ),
     },
   ]
 
@@ -192,7 +233,12 @@ export default function InventoryReportTab() {
 
       {/* Modal Chi Tiết */}
       <Modal
-        title={`Chi Tiết Báo Cáo Kiểm Kê: #${selectedReport?.reportId || ''}`}
+        title={
+          <Space>
+            <FileTextOutlined style={{ color: '#1890ff', fontSize: 18 }} />
+            <span style={{ fontSize: 16, fontWeight: 600 }}>Chi Tiết Báo Cáo Kiểm Kê #{selectedReport?.reportId || ''}</span>
+          </Space>
+        }
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={[
@@ -200,38 +246,54 @@ export default function InventoryReportTab() {
             Đóng
           </Button>,
         ]}
-        width={760}
+        width={1050}
+        style={{ top: 20 }}
       >
         {selectedReport && (
           <div>
-            <Descriptions size="small" bordered column={{ xs: 1, sm: 2 }} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="Thời gian">
-                {formatDateTime(selectedReport.createdAt)}
+            <Descriptions
+              bordered
+              size="small"
+              column={{ xs: 1, sm: 2, md: 3 }}
+              style={{ marginBottom: 16 }}
+            >
+              <Descriptions.Item label="Mã Biên Bản">
+                <Tag color="blue" style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
+                  {selectedReport.reportId}
+                </Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="Tiêu đề kiểm kê">
-                {selectedReport.auditTitle || selectedReport.reportName}
+              <Descriptions.Item label="Tiêu Đề Biên Bản" span={2}>
+                <Text strong style={{ fontSize: 14 }}>
+                  {selectedReport.auditTitle || selectedReport.reportName}
+                </Text>
               </Descriptions.Item>
-              <Descriptions.Item label="Người lập">
-                {selectedReport.createdBy?.fullName || selectedReport.createdBy?.username || 'Thủ kho'}
+              <Descriptions.Item label="Người Lập">
+                <Text>{selectedReport.createdBy?.fullName || selectedReport.createdBy?.username || 'Thủ kho'}</Text>
               </Descriptions.Item>
-              <Descriptions.Item label="Số mặt hàng lệch">
-                <Tag color="volcano">{selectedReport.totalDiscrepancyItems ?? (selectedReport.items?.length || 0)} mặt hàng</Tag>
+              <Descriptions.Item label="Thời Gian Lập">
+                <Text>{formatDateTime(selectedReport.createdAt)}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Số Mặt Hàng Lệch">
+                <Tag color={selectedReport.totalDiscrepancyItems > 0 ? 'red' : 'green'} style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  {selectedReport.totalDiscrepancyItems ?? (selectedReport.items?.length || 0)} mặt hàng
+                </Tag>
               </Descriptions.Item>
               {selectedReport.note && (
-                <Descriptions.Item label="Ghi chú" span={2}>
-                  {selectedReport.note}
+                <Descriptions.Item label="Ghi Chú Đợt Kiểm Kê" span={3}>
+                  <Text style={{ fontStyle: 'italic', color: '#434343' }}>{selectedReport.note}</Text>
                 </Descriptions.Item>
               )}
             </Descriptions>
 
-            <Divider style={{ margin: '12px 0' }}>Chi Tiết Hàng Hóa Lệch</Divider>
+            <Divider style={{ margin: '14px 0 12px 0' }}>Danh Sách Mặt Hàng Đối Soát</Divider>
 
             <Table
               dataSource={selectedReport.items || selectedReport.details || []}
               columns={detailColumns}
               rowKey={(r, idx) => r.detailId || r.productId || idx}
               pagination={false}
-              size="small"
+              size="middle"
+              scroll={{ x: 'max-content' }}
               loading={detailLoading}
             />
           </div>

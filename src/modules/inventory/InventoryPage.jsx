@@ -3,14 +3,12 @@ import { Tabs, Typography } from 'antd'
 import {
   InboxOutlined,
   FileDoneOutlined,
-  WarningOutlined,
   DiffOutlined,
 } from '@ant-design/icons'
 import { DefaultLayout } from '../../layouts'
 import { useAuthStore } from '../../stores/authStore'
 import StockOverviewView from './components/StockOverviewView/StockOverviewView'
 import ImportReceiptView from './components/ImportReceiptView/ImportReceiptView'
-import LowStockAlertView from './components/LowStockAlertView/LowStockAlertView'
 import DiscrepancyReportView from './components/DiscrepancyReportView/DiscrepancyReportView'
 import './InventoryPage.scss'
 
@@ -38,15 +36,6 @@ export default function InventoryPage() {
         </span>
       ),
       children: <ImportReceiptView />,
-    },
-    {
-      key: 'alerts',
-      label: (
-        <span>
-          <WarningOutlined /> Cảnh Báo Sắp Hết Hàng
-        </span>
-      ),
-      children: <LowStockAlertView onGoToImport={() => setActiveTab('import')} />,
     },
     {
       key: 'discrepancy',

@@ -11,16 +11,15 @@ import {
   Form,
   InputNumber,
   Typography,
-  Descriptions,
-  Spin,
+  Popconfirm,
+  Tooltip,
 } from 'antd'
 import {
   SearchOutlined,
   EditOutlined,
+  DeleteOutlined,
   ReloadOutlined,
   WarningOutlined,
-  EyeOutlined,
-  InboxOutlined,
 } from '@ant-design/icons'
 import { formatCurrency, formatDate } from '../../../../utils/formatters'
 import { useProductStore } from '../../../../stores/productStore'
@@ -33,7 +32,6 @@ export default function ProductManagementTab() {
   const {
     products,
     loading,
-    detailLoading,
     pagination,
     fetchProducts,
     fetchProductById,
@@ -48,13 +46,9 @@ export default function ProductManagementTab() {
   const [editingProduct, setEditingProduct] = useState(null)
   const [editForm] = Form.useForm()
 
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  const [viewingProduct, setViewingProduct] = useState(null)
-
   const [keyword, setKeyword] = useState('')
   const [status, setStatus] = useState(undefined)
   const [categoryId, setCategoryId] = useState(undefined)
-  const [onlyLowStock, setOnlyLowStock] = useState(false)
 
   useEffect(() => {
     fetchProducts(1, 8, {})
@@ -66,7 +60,6 @@ export default function ProductManagementTab() {
       keyword: keyword.trim(),
       categoryId,
       productStatus: status,
-      isLowStock: onlyLowStock,
     })
   }
 
@@ -74,7 +67,6 @@ export default function ProductManagementTab() {
     setKeyword('')
     setStatus(undefined)
     setCategoryId(undefined)
-    setOnlyLowStock(false)
     fetchProducts(1, pagination?.pageSize || 8, {})
   }
 
@@ -83,8 +75,21 @@ export default function ProductManagementTab() {
       keyword: keyword.trim(),
       categoryId,
       productStatus: status,
-      isLowStock: onlyLowStock,
     })
+  }
+
+  // Chuyển trạng thái mặt hàng sang 'Ngừng bán' khi bấm vào nút thùng rác
+  const handleDiscontinue = async (record) => {
+    const ok = await updateProduct(record.productId, {
+      productStatus: 'DISCONTINUED',
+    })
+    if (ok) {
+      fetchProducts(pagination?.current || 1, pagination?.pageSize || 8, {
+        keyword: keyword.trim(),
+        categoryId,
+        productStatus: status,
+      })
+    }
   }
 
   // Bấm nút Sửa: Gọi API lấy chi tiết rồi fill dữ liệu vào form
@@ -115,17 +120,11 @@ export default function ProductManagementTab() {
       setIsEditModalOpen(false)
       editForm.resetFields()
       setEditingProduct(null)
-      fetchProducts(pagination?.current || 1, pagination?.pageSize || 8, {})
-    }
-  }
-
-  // Bấm nút Xem chi tiết: Gọi API lấy chi tiết
-  const handleOpenDetail = async (record) => {
-    setViewingProduct(record)
-    setIsDetailModalOpen(true)
-    const detail = await fetchProductById(record.productId)
-    if (detail) {
-      setViewingProduct(detail)
+      fetchProducts(pagination?.current || 1, pagination?.pageSize || 8, {
+        keyword: keyword.trim(),
+        categoryId,
+        productStatus: status,
+      })
     }
   }
 
@@ -138,13 +137,13 @@ export default function ProductManagementTab() {
       render: (id) => <Tag color="blue" style={{ fontWeight: 600 }}>{id}</Tag>,
     },
     {
-      title: 'Tên Mặt Hàng',
+      title: 'Tên Sản Phẩm',
       dataIndex: 'productName',
       key: 'productName',
       render: (t) => <Text strong>{t}</Text>,
     },
     {
-      title: 'Ngành Hàng',
+      title: 'Loại',
       dataIndex: 'categoryName',
       key: 'categoryName',
       render: (c, r) => <Tag color="cyan">{c || r.category?.categoryName || 'Sản phẩm'}</Tag>,
@@ -153,9 +152,10 @@ export default function ProductManagementTab() {
       title: 'Tồn Kho',
       dataIndex: 'stockQuantity',
       key: 'stockQuantity',
+      width: 110,
       render: (q) => (
         <Tag color={q <= 10 ? 'red' : 'green'} style={{ fontWeight: 600 }}>
-          {q <= 10 && <WarningOutlined />} {q} đơn vị
+          {q <= 10 && <WarningOutlined />} {q ?? 0}
         </Tag>
       ),
     },
@@ -163,18 +163,32 @@ export default function ProductManagementTab() {
       title: 'Giá Bán',
       dataIndex: 'unitPrice',
       key: 'unitPrice',
+      width: 130,
       render: (p) => formatCurrency(p),
     },
     {
       title: 'Hạn Sử Dụng',
       dataIndex: 'expirationDate',
       key: 'expirationDate',
-      render: (d) => formatDate(d),
+      render: (d) => {
+        if (!d) return '-'
+        const isExpired = new Date(d).getTime() < Date.now()
+        if (isExpired) {
+          return (
+            <Space size={6}>
+              <Text style={{ color: '#ff4d4f', fontWeight: 600 }}>{formatDate(d)}</Text>
+              <Tag color="red" style={{ fontWeight: 600 }}>Hết hạn</Tag>
+            </Space>
+          )
+        }
+        return formatDate(d)
+      },
     },
     {
       title: 'Trạng Thái',
       dataIndex: 'productStatus',
       key: 'productStatus',
+      width: 120,
       render: (st) => (
         <Tag color={st === 'ON_SALE' ? 'green' : 'default'}>
           {st === 'ON_SALE' ? 'Đang bán' : 'Ngừng bán'}
@@ -184,23 +198,39 @@ export default function ProductManagementTab() {
     {
       title: 'Hành động',
       key: 'actions',
-      width: 130,
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined style={{ color: '#52c41a' }} />}
-            onClick={() => handleOpenDetail(record)}
-            title="Xem chi tiết"
-          />
-          <Button
-            type="text"
-            icon={<EditOutlined style={{ color: '#1890ff' }} />}
-            onClick={() => handleOpenEdit(record)}
-            title="Sửa mặt hàng"
-          />
-        </Space>
-      ),
+      width: 110,
+      render: (_, record) => {
+        const isDiscontinued = record.productStatus === 'DISCONTINUED'
+        return (
+          <Space size="small">
+            <Tooltip title="Chỉnh sửa">
+              <Button
+                type="text"
+                icon={<EditOutlined style={{ color: '#1890ff' }} />}
+                onClick={() => handleOpenEdit(record)}
+              />
+            </Tooltip>
+            <Popconfirm
+              title="Ngừng bán sản phẩm?"
+              description={`Bạn có chắc muốn chuyển "${record.productName}" sang Ngừng bán?`}
+              onConfirm={() => handleDiscontinue(record)}
+              okText="Ngừng bán"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+              disabled={isDiscontinued}
+            >
+              <Tooltip title={isDiscontinued ? 'Đã ngừng bán' : 'Ngừng bán'}>
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  disabled={isDiscontinued}
+                />
+              </Tooltip>
+            </Popconfirm>
+          </Space>
+        )
+      },
     },
   ]
 
@@ -208,17 +238,17 @@ export default function ProductManagementTab() {
     <Card title="Quản Lý Danh Sách Mặt Hàng" bordered={false} className="product-management-tab">
       <div className="product-management-tab__filters">
         <Input
-          placeholder="Tìm tên mặt hàng..."
+          placeholder="Tìm theo mã, tên mặt hàng..."
           prefix={<SearchOutlined />}
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           onPressEnter={handleApplyFilter}
-          style={{ width: 220 }}
+          style={{ width: 250 }}
           allowClear
         />
 
         <Select
-          placeholder="Lọc theo ngành hàng"
+          placeholder="Lọc theo loại sản phẩm"
           value={categoryId}
           onChange={setCategoryId}
           style={{ width: 180 }}
@@ -240,15 +270,6 @@ export default function ProductManagementTab() {
         >
           <Select.Option value="ON_SALE">Đang bán</Select.Option>
           <Select.Option value="DISCONTINUED">Ngừng bán</Select.Option>
-        </Select>
-
-        <Select
-          value={onlyLowStock}
-          onChange={setOnlyLowStock}
-          style={{ width: 160 }}
-        >
-          <Select.Option value={false}>Tất cả số lượng</Select.Option>
-          <Select.Option value={true}>Chỉ hàng sắp hết (&le;10)</Select.Option>
         </Select>
 
         <Button type="primary" onClick={handleApplyFilter}>
@@ -329,67 +350,6 @@ export default function ProductManagementTab() {
           </div>
         </Form>
       </Modal>
-
-      {/* Modal Xem Chi Tiết Sản Phẩm */}
-      <Modal
-        title={
-          <Space>
-            <InboxOutlined style={{ color: '#1890ff' }} />
-            <span>Chi Tiết Mặt Hàng: {viewingProduct?.productName || ''}</span>
-          </Space>
-        }
-        open={isDetailModalOpen}
-        onCancel={() => {
-          setIsDetailModalOpen(false)
-          setViewingProduct(null)
-        }}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)}>
-            Đóng
-          </Button>,
-        ]}
-        width={580}
-      >
-        <Spin spinning={detailLoading}>
-          {viewingProduct && (
-            <Descriptions bordered column={1} size="middle" style={{ marginTop: 12 }}>
-              <Descriptions.Item label="Mã Sản Phẩm">
-                <Tag color="blue" style={{ fontWeight: 600 }}>{viewingProduct.productId}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Tên Mặt Hàng">
-                <Text strong>{viewingProduct.productName}</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Ngành Hàng">
-                <Tag color="cyan">
-                  {viewingProduct.category?.categoryName || viewingProduct.categoryName || 'Sản phẩm'}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Giá Bán Lẻ">
-                <Text strong style={{ color: '#2563eb', fontSize: 16 }}>
-                  {formatCurrency(viewingProduct.unitPrice)}
-                </Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Tồn Kho Hiện Tại">
-                <Tag
-                  color={viewingProduct.stockQuantity <= 10 ? 'red' : 'green'}
-                  style={{ fontWeight: 600 }}
-                >
-                  {viewingProduct.stockQuantity <= 10 && <WarningOutlined />} {viewingProduct.stockQuantity} đơn vị
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Hạn Sử Dụng (HSD)">
-                {formatDate(viewingProduct.expirationDate)}
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng Thái Kinh Doanh">
-                <Tag color={viewingProduct.productStatus === 'ON_SALE' ? 'green' : 'default'}>
-                  {viewingProduct.productStatus === 'ON_SALE' ? 'Đang bán' : 'Ngừng bán'}
-                </Tag>
-              </Descriptions.Item>
-            </Descriptions>
-          )}
-        </Spin>
-      </Modal>
     </Card>
   )
 }
-

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Card, Input, Tag, Typography, Modal, Space, Spin, Descriptions } from 'antd'
+import { Table, Button, Card, Input, Tag, Typography, Modal, Space, Spin } from 'antd'
 import {
   UserAddOutlined,
   SearchOutlined,
@@ -7,7 +7,6 @@ import {
   CheckOutlined,
   TrophyOutlined,
   HistoryOutlined,
-  EyeOutlined,
 } from '@ant-design/icons'
 import { formatDateTime, formatCurrency } from '../../../../utils/formatters'
 import { useCustomerStore } from '../../../../stores/customerStore'
@@ -20,17 +19,13 @@ export default function CustomerListView({ onOpenRegisterModal, onSelectCustomer
   const {
     customers,
     loading,
-    detailLoading,
-    selectedCustomer,
     pagination,
     fetchCustomers,
-    fetchCustomerById,
     fetchCustomerInvoices,
   } = useCustomerStore()
   const setCustomer = useCartStore((state) => state.setCustomer)
   const [keyword, setKeyword] = useState('')
 
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [historyCustomer, setHistoryCustomer] = useState(null)
   const [customerInvoices, setCustomerInvoices] = useState([])
@@ -53,11 +48,6 @@ export default function CustomerListView({ onOpenRegisterModal, onSelectCustomer
     if (onSelectCustomerForCart) {
       onSelectCustomerForCart(record)
     }
-  }
-
-  const handleOpenDetail = async (record) => {
-    setIsDetailModalOpen(true)
-    await fetchCustomerById(record.customerId)
   }
 
   // Bấm xem lịch sử hóa đơn mua hàng của khách
@@ -96,12 +86,6 @@ export default function CustomerListView({ onOpenRegisterModal, onSelectCustomer
       render: (phone) => <Tag color="blue">{phone}</Tag>,
     },
     {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
-      render: (em) => em || <Text type="secondary">-</Text>,
-    },
-    {
       title: 'Điểm Tích Lũy',
       dataIndex: 'loyaltyPoints',
       key: 'loyaltyPoints',
@@ -120,16 +104,9 @@ export default function CustomerListView({ onOpenRegisterModal, onSelectCustomer
     {
       title: 'Thao tác',
       key: 'action',
-      width: 280,
+      width: 200,
       render: (_, record) => (
         <Space size="small">
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleOpenDetail(record)}
-          >
-            Chi Tiết
-          </Button>
           <Button
             type="text"
             size="small"
@@ -273,48 +250,6 @@ export default function CustomerListView({ onOpenRegisterModal, onSelectCustomer
             style={{ marginTop: 12 }}
           />
         </Spin>
-      </Modal>
-
-      {/* Modal Xem Chi Tiết Khách Hàng */}
-      <Modal
-        title={`Chi Tiết Khách Hàng: ${selectedCustomer?.fullName || ''}`}
-        open={isDetailModalOpen}
-        onCancel={() => setIsDetailModalOpen(false)}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)}>
-            Đóng
-          </Button>,
-        ]}
-        width={600}
-      >
-        {detailLoading ? (
-          <div style={{ textAlign: 'center', padding: '30px 0' }}>
-            <Spin size="large" tip="Đang tải thông tin khách hàng..." />
-          </div>
-        ) : selectedCustomer ? (
-          <Descriptions bordered column={1} size="middle" style={{ marginTop: 12 }}>
-            <Descriptions.Item label="Mã Khách Hàng">
-              <Text code>{selectedCustomer.customerId}</Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Họ và Tên">
-              <Text strong>{selectedCustomer.fullName}</Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Số Điện Thoại">
-              <Tag color="blue">{selectedCustomer.phoneNumber}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Email">
-              {selectedCustomer.email || <Text type="secondary">Chưa cập nhật</Text>}
-            </Descriptions.Item>
-            <Descriptions.Item label="Điểm Tích Lũy">
-              <Tag color="gold" style={{ fontWeight: 600, fontSize: 13 }}>
-                <TrophyOutlined /> {selectedCustomer.loyaltyPoints || 0} điểm
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày Đăng Ký">
-              {formatDateTime(selectedCustomer.createdAt)}
-            </Descriptions.Item>
-          </Descriptions>
-        ) : null}
       </Modal>
     </Card>
   )

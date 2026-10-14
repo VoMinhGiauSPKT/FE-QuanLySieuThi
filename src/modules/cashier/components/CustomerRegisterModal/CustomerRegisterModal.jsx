@@ -1,5 +1,5 @@
 import { Modal, Form, Input, Space, Button } from 'antd'
-import { UserOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons'
+import { UserOutlined, PhoneOutlined } from '@ant-design/icons'
 import './CustomerRegisterModal.scss'
 
 export default function CustomerRegisterModal({
@@ -48,10 +48,6 @@ export default function CustomerRegisterModal({
           ]}
         >
           <Input prefix={<PhoneOutlined />} placeholder="Ví dụ: 0909123456" size="large" />
-        </Form.Item>
-
-        <Form.Item name="email" label="Email (tùy chọn)">
-          <Input prefix={<MailOutlined />} placeholder="Ví dụ: khachhang@gmail.com" size="large" />
         </Form.Item>
 
         <div className="customer-register-modal__actions">
