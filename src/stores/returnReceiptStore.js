@@ -5,7 +5,7 @@ import {
   getReturnReceipts,
   getReturnReceiptById,
 } from '../services/returnReceiptService'
-import { extractArray, extractObject } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const useReturnReceiptStore = create((set, get) => ({
   returnReceipts: [],
@@ -13,6 +13,7 @@ export const useReturnReceiptStore = create((set, get) => ({
   loading: false,
   creating: false,
   detailLoading: false,
+  pagination: { current: 1, pageSize: 8, total: 0 },
 
   // Lấy danh sách phiếu trả hàng
   fetchReturnReceipts: async (params = {}) => {
@@ -20,7 +21,15 @@ export const useReturnReceiptStore = create((set, get) => ({
     try {
       const res = await getReturnReceipts(params)
       const list = extractArray(res)
-      set({ returnReceipts: list })
+      const meta = extractMeta(res)
+      set({
+        returnReceipts: list,
+        pagination: {
+          current: params.page || 1,
+          pageSize: params.limit || 8,
+          total: meta.totalItems || list.length,
+        },
+      })
       return list
     } catch (err) {
       console.error('Lỗi khi tải danh sách phiếu trả hàng:', err)

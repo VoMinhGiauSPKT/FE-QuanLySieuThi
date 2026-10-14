@@ -18,6 +18,14 @@ export const createCustomer = async (data) => {
 }
 
 /**
+ * Lấy chi tiết khách hàng theo ID
+ * @param {string} id
+ */
+export const getCustomerById = async (id) => {
+  return await api.get(`${API_ENDPOINTS.CUSTOMER.BASE}/${id}`)
+}
+
+/**
  * Lấy lịch sử hóa đơn mua sắm của khách hàng
  * @param {string} customerId
  * @param {Object} params - { page, limit, status, fromDate, toDate }

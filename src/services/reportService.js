@@ -24,3 +24,22 @@ export const getStockDiscrepancies = async (params = {}) => {
 export const getStockDiscrepancyById = async (id) => {
   return await api.get(API_ENDPOINTS.REPORT.STOCK_DISCREPANCY_DETAIL(id))
 }
+
+/**
+ * Lấy báo cáo doanh thu theo chu kỳ
+ * @param {Object} params - { type: 'DAILY'|'MONTHLY'|'YEARLY'|'CUSTOM', date?, month?, year?, fromDate?, toDate? }
+ */
+export const getRevenueReport = async (params = {}) => {
+  return await api.get(API_ENDPOINTS.REPORT.REVENUE, { params })
+}
+
+/**
+ * Xuất file Excel báo cáo / phiếu nhập / kiểm kê
+ * @param {Object} params - { target: 'PURCHASE'|'DISCREPANCY', receiptId?, filterType?, date?, month?, year? }
+ */
+export const exportExcelReport = async (params = {}) => {
+  return await api.get(API_ENDPOINTS.REPORT.EXPORT_EXCEL, {
+    params,
+    responseType: 'blob',
+  })
+}

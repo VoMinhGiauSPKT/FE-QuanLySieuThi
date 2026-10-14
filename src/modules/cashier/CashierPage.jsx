@@ -57,8 +57,9 @@ export default function CashierPage() {
     setIsRegistering(true)
     try {
       const res = await createCustomer(formData)
-      if (res?.data?.customerId) {
-        setCustomer(res.data)
+      const newCust = res?.customerId ? res : (res?.data?.customerId ? res.data : null)
+      if (newCust) {
+        setCustomer(newCust)
         message.success('Đăng ký khách hàng thành công!')
         setIsRegisterModalOpen(false)
         return true
@@ -78,24 +79,26 @@ export default function CashierPage() {
 
     setIsCreatingInvoice(true)
     try {
+      // Đúng schema BE: Module 7, customerId, useLoyaltyPoints, items: [{ productId, quantity }]
+      // Không truyền invoiceId vì mã tự sinh trong BE
       const payload = {
         customerId: customer?.customerId || null,
-        usePoints: usePoints,
+        useLoyaltyPoints: Boolean(usePoints),
+        usePoints: Boolean(usePoints),
         items: cartItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
         })),
       }
 
       const res = await createInvoice(payload)
-      if (res?.data?.invoiceId) {
-        const invoiceData = res.data
+      const invoiceData = res?.invoiceId ? res : (res?.data?.invoiceId ? res.data : null)
+      if (invoiceData) {
         const summary = getSummary()
         setPendingInvoice({
           ...invoiceData,
-          finalTotal: invoiceData.finalTotal || summary.finalTotal,
-          discountAmount: invoiceData.discountAmount || summary.discount,
+          finalTotal: invoiceData.finalAmount ?? invoiceData.finalTotal ?? summary.finalTotal,
+          discountAmount: invoiceData.discountAmount ?? summary.discount,
         })
         setIsPaymentModalOpen(true)
       }

@@ -4,19 +4,37 @@ import {
   getStockDiscrepancies,
   getStockDiscrepancyById,
   createStockDiscrepancy,
+  getRevenueReport,
+  exportExcelReport,
 } from '../services/reportService'
-import { extractArray, extractObject } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const useReportStore = create((set, get) => ({
   reports: [],
+  revenueData: null,
   loading: false,
   creating: false,
   selectedReport: null,
   detailLoading: false,
   pagination: { current: 1, pageSize: 8, total: 0 },
 
-  // Lấy danh sách biên bản kiểm kê kho
-  fetchReports: async (page = 1, pageSize = 8, filters = {}) => {
+  // Lấy danh sách biên bản kiểm kê kho (hỗ trợ cả (page, pageSize, filters) và ({ page, limit, ... }))
+  fetchReports: async (arg1 = 1, arg2 = 8, arg3 = {}) => {
+    let page = 1
+    let pageSize = 8
+    let filters = {}
+
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      page = arg1.page || 1
+      pageSize = arg1.limit || arg1.pageSize || 8
+      const { page: _p, limit: _l, pageSize: _ps, ...rest } = arg1
+      filters = rest
+    } else {
+      page = Number(arg1) || 1
+      pageSize = Number(arg2) || 8
+      filters = arg3 || {}
+    }
+
     set({ loading: true })
     try {
       const res = await getStockDiscrepancies({
@@ -25,13 +43,13 @@ export const useReportStore = create((set, get) => ({
         ...filters,
       })
       const list = extractArray(res)
-      const meta = res?.data?.meta || res?.data?.data?.meta || {}
+      const meta = extractMeta(res)
       set({
         reports: list,
         pagination: {
           current: page,
           pageSize,
-          total: meta.total ?? list.length,
+          total: meta.totalItems || list.length,
         },
       })
       return list
@@ -83,4 +101,45 @@ export const useReportStore = create((set, get) => ({
       set({ creating: false })
     }
   },
+
+  // Alias createReport cho createStockDiscrepancy
+  createReport: async (data) => {
+    return await get().createStockDiscrepancy(data)
+  },
+
+  // Lấy báo cáo doanh thu
+  fetchRevenueReport: async (params = {}) => {
+    set({ loading: true })
+    try {
+      const res = await getRevenueReport(params)
+      const data = extractObject(res, null)
+      set({ revenueData: data })
+      return data
+    } catch (err) {
+      console.error('Lỗi khi tải báo cáo doanh thu:', err)
+      return null
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  // Xuất file Excel
+  exportExcel: async (params = {}) => {
+    try {
+      const response = await exportExcelReport(params)
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `bao_cao_${Date.now()}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      message.success('Tải file Excel thành công!')
+      return true
+    } catch (err) {
+      message.error(err?.message || 'Lỗi khi xuất file Excel!')
+      return false
+    }
+  },
 }))
+

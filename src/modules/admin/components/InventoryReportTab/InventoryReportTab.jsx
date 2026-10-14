@@ -55,19 +55,30 @@ export default function InventoryReportTab() {
       dataIndex: 'reportId',
       key: 'reportId',
       width: 120,
-      render: (id) => <Tag color="blue">{id}</Tag>,
+      render: (id) => <Tag color="blue" style={{ fontWeight: 600 }}>{id}</Tag>,
     },
     {
       title: 'Người Lập (Thủ Kho)',
       dataIndex: ['createdBy', 'fullName'],
       key: 'createdByName',
-      render: (name, rec) => name || rec.createdBy?.employeeId || 'Thủ kho',
+      render: (name, rec) => name || rec.createdBy?.username || rec.createdBy?.employeeId || 'Thủ kho',
     },
     {
       title: 'Tiêu Đề Đợt Kiểm Kê',
-      dataIndex: 'reportName',
-      key: 'reportName',
-      render: (t, rec) => <Text strong>{t || rec.note || 'Kiểm kê định kỳ'}</Text>,
+      dataIndex: 'auditTitle',
+      key: 'auditTitle',
+      render: (t, rec) => <Text strong>{t || rec.reportName || rec.note || 'Kiểm kê định kỳ'}</Text>,
+    },
+    {
+      title: 'Số Mặt Hàng Lệch',
+      dataIndex: 'totalDiscrepancyItems',
+      key: 'totalDiscrepancyItems',
+      width: 150,
+      render: (count) => (
+        <Tag color={count > 0 ? 'volcano' : 'green'}>
+          {count ?? 0} mặt hàng
+        </Tag>
+      ),
     },
     {
       title: 'Thời Gian Lập',
@@ -76,18 +87,9 @@ export default function InventoryReportTab() {
       render: (d) => formatDateTime(d),
     },
     {
-      title: 'Trạng Thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (st) => (
-        <Tag color={st === 'RESOLVED' ? 'green' : 'orange'}>
-          {st === 'RESOLVED' ? 'Đã giải quyết' : 'Cần kiểm tra'}
-        </Tag>
-      ),
-    },
-    {
       title: 'Hành động',
       key: 'actions',
+      width: 130,
       render: (_, record) => (
         <Button
           type="primary"
@@ -106,7 +108,8 @@ export default function InventoryReportTab() {
       title: 'Mã SP',
       dataIndex: 'productId',
       key: 'productId',
-      render: (id) => <Text code>{id ? String(id).substring(0, 8) + '...' : ''}</Text>,
+      width: 110,
+      render: (id) => <Tag color="blue">{id}</Tag>,
     },
     {
       title: 'Tên Mặt Hàng',
@@ -115,22 +118,42 @@ export default function InventoryReportTab() {
       render: (name) => <Text strong>{name}</Text>,
     },
     {
+      title: 'Ngành Hàng',
+      dataIndex: 'categoryName',
+      key: 'categoryName',
+      render: (cat) => <Tag color="cyan">{cat || 'Sản phẩm'}</Tag>,
+    },
+    {
       title: 'Tồn Hệ Thống',
       dataIndex: 'systemQuantity',
       key: 'systemQuantity',
+      render: (q) => <Text>{q}</Text>,
     },
     {
       title: 'Tồn Thực Tế',
       dataIndex: 'actualQuantity',
       key: 'actualQuantity',
+      render: (q) => <Text strong>{q}</Text>,
     },
     {
       title: 'Chênh Lệch',
-      dataIndex: 'discrepancyQuantity',
-      key: 'discrepancyQuantity',
-      render: (d) => (
-        <Tag color={d === 0 ? 'default' : d > 0 ? 'green' : 'red'}>
-          {d > 0 ? `+${d}` : d}
+      key: 'difference',
+      render: (_, r) => {
+        const diff = r.difference ?? r.discrepancyQuantity ?? (r.actualQuantity - r.systemQuantity)
+        return (
+          <Tag color={diff === 0 ? 'default' : diff > 0 ? 'green' : 'red'}>
+            {diff > 0 ? `+${diff}` : diff}
+          </Tag>
+        )
+      },
+    },
+    {
+      title: 'Trạng Thái',
+      dataIndex: 'status',
+      key: 'status',
+      render: (st) => (
+        <Tag color={st === 'SHORTAGE' ? 'red' : st === 'SURPLUS' ? 'green' : 'default'}>
+          {st === 'SHORTAGE' ? 'Thiếu hàng' : st === 'SURPLUS' ? 'Thừa hàng' : (st || 'Khớp')}
         </Tag>
       ),
     },
@@ -181,21 +204,32 @@ export default function InventoryReportTab() {
       >
         {selectedReport && (
           <div>
-            <Descriptions size="small" column={{ xs: 1, sm: 2 }} style={{ marginBottom: 16 }}>
+            <Descriptions size="small" bordered column={{ xs: 1, sm: 2 }} style={{ marginBottom: 16 }}>
               <Descriptions.Item label="Thời gian">
                 {formatDateTime(selectedReport.createdAt)}
               </Descriptions.Item>
-              <Descriptions.Item label="Tiêu đề">
-                {selectedReport.reportName || selectedReport.auditTitle}
+              <Descriptions.Item label="Tiêu đề kiểm kê">
+                {selectedReport.auditTitle || selectedReport.reportName}
               </Descriptions.Item>
+              <Descriptions.Item label="Người lập">
+                {selectedReport.createdBy?.fullName || selectedReport.createdBy?.username || 'Thủ kho'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Số mặt hàng lệch">
+                <Tag color="volcano">{selectedReport.totalDiscrepancyItems ?? (selectedReport.items?.length || 0)} mặt hàng</Tag>
+              </Descriptions.Item>
+              {selectedReport.note && (
+                <Descriptions.Item label="Ghi chú" span={2}>
+                  {selectedReport.note}
+                </Descriptions.Item>
+              )}
             </Descriptions>
 
             <Divider style={{ margin: '12px 0' }}>Chi Tiết Hàng Hóa Lệch</Divider>
 
             <Table
-              dataSource={selectedReport.details || []}
+              dataSource={selectedReport.items || selectedReport.details || []}
               columns={detailColumns}
-              rowKey={(r, idx) => r.productId || idx}
+              rowKey={(r, idx) => r.detailId || r.productId || idx}
               pagination={false}
               size="small"
               loading={detailLoading}

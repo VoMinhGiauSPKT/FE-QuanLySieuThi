@@ -87,8 +87,8 @@ export default function OverviewTab({ onNavigateTab }) {
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false} className="overview-tab__stat-card overview-tab__stat-card--green">
             <Statistic
-              title={<Text type="secondary">Tổng Doanh Thu</Text>}
-              value={paymentSummary?.totalRevenue || 0}
+              title={<Text type="secondary">Tổng Doanh Thu Đã Thu</Text>}
+              value={paymentSummary?.totalPaid ?? paymentSummary?.finalAmount ?? paymentSummary?.totalRevenue ?? 0}
               precision={0}
               valueStyle={{ color: '#3f8600', fontWeight: 700 }}
               prefix={<DollarOutlined />}
@@ -100,11 +100,12 @@ export default function OverviewTab({ onNavigateTab }) {
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false} className="overview-tab__stat-card overview-tab__stat-card--blue">
             <Statistic
-              title={<Text type="secondary">Tổng Số Giao Dịch</Text>}
-              value={paymentSummary?.totalTransactions || 0}
+              title={<Text type="secondary">Tổng Tiền Gốc Hóa Đơn</Text>}
+              value={paymentSummary?.originalTotal ?? paymentSummary?.totalAmount ?? 0}
+              precision={0}
               valueStyle={{ color: '#1890ff', fontWeight: 700 }}
               prefix={<ShoppingOutlined />}
-              suffix="đơn"
+              suffix="đ"
             />
           </Card>
         </Col>
@@ -135,27 +136,27 @@ export default function OverviewTab({ onNavigateTab }) {
         </Col>
       </Row>
 
-      {/* Phân loại doanh thu theo phương thức */}
+      {/* Phân loại tài chính */}
       <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
         <Col xs={24} md={12}>
           <Card
             title={
               <Space>
                 <DollarOutlined style={{ color: '#52c41a' }} />
-                <span>Thanh Toán Tiền Mặt (CASH)</span>
+                <span>Tổng Tiền Chiết Khấu / Giảm Giá</span>
               </Space>
             }
             bordered={false}
             className="overview-tab__stat-card"
           >
             <Statistic
-              value={paymentSummary?.cashTotal || 0}
+              value={paymentSummary?.discountAmount ?? 0}
               precision={0}
-              valueStyle={{ color: '#52c41a', fontSize: 28, fontWeight: 700 }}
+              valueStyle={{ color: '#faad14', fontSize: 28, fontWeight: 700 }}
               suffix="đ"
             />
             <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-              Chiếm tỷ trọng doanh thu giao dịch trực tiếp tại quầy thu ngân.
+              Tổng số tiền đã giảm trừ cho khách hàng qua đổi điểm thưởng hội viên.
             </Text>
           </Card>
         </Col>
@@ -165,24 +166,25 @@ export default function OverviewTab({ onNavigateTab }) {
             title={
               <Space>
                 <CreditCardOutlined style={{ color: '#1890ff' }} />
-                <span>Thanh Toán Trực Tuyến VNPay</span>
+                <span>Doanh Thu Thực Sau Chiết Khấu</span>
               </Space>
             }
             bordered={false}
             className="overview-tab__stat-card"
           >
             <Statistic
-              value={paymentSummary?.vnpayTotal || 0}
+              value={paymentSummary?.finalAmount ?? 0}
               precision={0}
               valueStyle={{ color: '#1890ff', fontSize: 28, fontWeight: 700 }}
               suffix="đ"
             />
             <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-              Giao dịch thông qua quét mã QR hoặc cổng thanh toán VNPay điện tử.
+              Số tiền thực thu của toàn bộ hóa đơn bán lẻ trong hệ thống.
             </Text>
           </Card>
         </Col>
       </Row>
+
 
       {/* Lối tắt truy cập các phân hệ nghiệp vụ */}
       <Card

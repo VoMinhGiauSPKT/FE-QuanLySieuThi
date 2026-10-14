@@ -5,7 +5,7 @@ import {
   getPurchaseReceiptById,
   createPurchaseReceipt,
 } from '../services/purchaseReceiptService'
-import { extractArray, extractObject } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const usePurchaseReceiptStore = create((set, get) => ({
   receipts: [],
@@ -13,6 +13,7 @@ export const usePurchaseReceiptStore = create((set, get) => ({
   creating: false,
   selectedReceipt: null,
   detailLoading: false,
+  pagination: { current: 1, pageSize: 8, total: 0 },
 
   // Lấy danh sách phiếu nhập hàng
   fetchReceipts: async (params = {}) => {
@@ -20,7 +21,15 @@ export const usePurchaseReceiptStore = create((set, get) => ({
     try {
       const res = await getPurchaseReceipts(params)
       const list = extractArray(res)
-      set({ receipts: list })
+      const meta = extractMeta(res)
+      set({
+        receipts: list,
+        pagination: {
+          current: params.page || 1,
+          pageSize: params.limit || 8,
+          total: meta.totalItems || list.length,
+        },
+      })
       return list
     } catch (err) {
       console.error('Lỗi khi tải danh sách phiếu nhập:', err)

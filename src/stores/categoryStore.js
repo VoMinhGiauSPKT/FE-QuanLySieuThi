@@ -3,62 +3,78 @@ import { message } from 'antd'
 import {
   getCategories,
   getAllCategories,
+  getCategoryById,
   createCategory,
   updateCategory,
   deleteCategory,
 } from '../services/categoryService'
-import { extractArray } from '../utils/apiHelper'
-import { DEFAULT_CATEGORIES } from '../constants/categories'
+import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const useCategoryStore = create((set, get) => ({
-  categories: DEFAULT_CATEGORIES,
-  allCategories: DEFAULT_CATEGORIES,
+  categories: [],
+  allCategories: [],
+  selectedCategory: null,
   loading: false,
-  pagination: { current: 1, pageSize: 8, total: DEFAULT_CATEGORIES.length },
+  detailLoading: false,
+  pagination: { current: 1, pageSize: 8, total: 0 },
   keyword: '',
 
-  // Lấy danh sách loại sản phẩm có phân trang & tìm kiếm
+  // Lấy danh sách loại sản phẩm có phân trang & tìm kiếm từ Backend API
   fetchCategories: async (page = 1, pageSize = 8, keyword = '') => {
     set({ loading: true, keyword })
     try {
       const res = await getCategories({ page, limit: pageSize, keyword })
       const list = extractArray(res)
-      const meta = res?.data?.meta || res?.data?.data?.meta || {}
-      const finalList = list && list.length > 0 ? list : DEFAULT_CATEGORIES
+      const meta = extractMeta(res)
       set({
-        categories: finalList,
+        categories: list,
         pagination: {
           current: page,
           pageSize,
-          total: meta.total ?? finalList.length,
+          total: meta.totalItems !== undefined ? meta.totalItems : list.length,
         },
       })
-      return finalList
+      return list
     } catch (err) {
-      console.warn('Lỗi tải loại sản phẩm (dùng danh mục mặc định):', err?.message)
-      set({ categories: DEFAULT_CATEGORIES })
-      return DEFAULT_CATEGORIES
+      message.error(err?.response?.data?.message || err?.message || 'Không thể tải danh sách loại sản phẩm!')
+      set({ categories: [] })
+      return []
     } finally {
       set({ loading: false })
     }
   },
 
-  // Lấy toàn bộ loại sản phẩm không phân trang (dùng cho dropdown Select)
+  // Lấy chi tiết loại sản phẩm theo ID từ Backend API
+  fetchCategoryById: async (id) => {
+    set({ detailLoading: true })
+    try {
+      const res = await getCategoryById(id)
+      const detail = extractObject(res, null)
+      set({ selectedCategory: detail })
+      return detail
+    } catch (err) {
+      message.error(err?.response?.data?.message || err?.message || 'Không thể tải chi tiết loại sản phẩm!')
+      return null
+    } finally {
+      set({ detailLoading: false })
+    }
+  },
+
+  // Lấy toàn bộ loại sản phẩm không phân trang từ Backend API (query ?all=true phục vụ Select dropdown)
   fetchAllCategories: async () => {
     try {
       const res = await getAllCategories()
       const list = extractArray(res)
-      const finalList = list && list.length > 0 ? list : DEFAULT_CATEGORIES
-      set({ allCategories: finalList })
-      return finalList
+      set({ allCategories: list })
+      return list
     } catch (err) {
-      console.warn('Lỗi tải toàn bộ danh mục (dùng danh mục mặc định):', err?.message)
-      set({ allCategories: DEFAULT_CATEGORIES })
-      return DEFAULT_CATEGORIES
+      console.error('Lỗi khi tải toàn bộ loại sản phẩm:', err)
+      set({ allCategories: [] })
+      return []
     }
   },
 
-  // Tạo mới loại sản phẩm
+  // Tạo mới loại sản phẩm qua API Backend (POST /api/category)
   createCategory: async (data) => {
     try {
       const res = await createCategory(data)
@@ -73,7 +89,7 @@ export const useCategoryStore = create((set, get) => ({
     }
   },
 
-  // Cập nhật loại sản phẩm
+  // Cập nhật loại sản phẩm qua API Backend (PUT /api/category/:id)
   updateCategory: async (id, data) => {
     try {
       const res = await updateCategory(id, data)
@@ -88,7 +104,7 @@ export const useCategoryStore = create((set, get) => ({
     }
   },
 
-  // Xóa loại sản phẩm
+  // Xóa loại sản phẩm qua API Backend (DELETE /api/category/:id)
   deleteCategory: async (id) => {
     try {
       const res = await deleteCategory(id)

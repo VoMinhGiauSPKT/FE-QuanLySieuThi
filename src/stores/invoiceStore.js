@@ -6,13 +6,14 @@ import {
   createInvoice,
   cancelInvoice,
 } from '../services/invoiceService'
-import { extractArray, extractObject } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const useInvoiceStore = create((set, get) => ({
   invoices: [],
   loading: false,
   selectedInvoice: null,
   detailLoading: false,
+  pagination: { current: 1, pageSize: 8, total: 0 },
 
   // Lấy danh sách hóa đơn
   fetchInvoices: async (params = {}) => {
@@ -20,7 +21,15 @@ export const useInvoiceStore = create((set, get) => ({
     try {
       const res = await getInvoices(params)
       const list = extractArray(res)
-      set({ invoices: list })
+      const meta = extractMeta(res)
+      set({
+        invoices: list,
+        pagination: {
+          current: params.page || 1,
+          pageSize: params.limit || 8,
+          total: meta.totalItems || list.length,
+        },
+      })
       return list
     } catch (err) {
       console.error('Lỗi khi tải lịch sử hóa đơn:', err)

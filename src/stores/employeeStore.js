@@ -2,20 +2,38 @@ import { create } from 'zustand'
 import { message } from 'antd'
 import {
   getEmployees,
+  getEmployeeById,
   createEmployee,
   updateEmployee,
   deleteEmployee,
 } from '../services/employeeService'
-import { extractArray } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const useEmployeeStore = create((set, get) => ({
   employees: [],
+  selectedEmployee: null,
   loading: false,
-  pagination: { current: 1, pageSize: 8, total: 0 },
+  detailLoading: false,
+  pagination: { current: 1, pageSize: 10, total: 0 },
   filters: {},
 
-  // Lấy danh sách nhân viên
-  fetchEmployees: async (page = 1, pageSize = 8, filters = {}) => {
+  // Lấy danh sách nhân viên (hỗ trợ cả fetchEmployees(page, pageSize, filters) và fetchEmployees({ page, limit, ... }))
+  fetchEmployees: async (arg1 = 1, arg2 = 10, arg3 = {}) => {
+    let page = 1
+    let pageSize = 10
+    let filters = {}
+
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      page = arg1.page || 1
+      pageSize = arg1.limit || arg1.pageSize || 10
+      const { page: _p, limit: _l, pageSize: _ps, ...rest } = arg1
+      filters = rest
+    } else {
+      page = Number(arg1) || 1
+      pageSize = Number(arg2) || 10
+      filters = arg3 || {}
+    }
+
     set({ loading: true, filters })
     try {
       const res = await getEmployees({
@@ -24,13 +42,13 @@ export const useEmployeeStore = create((set, get) => ({
         ...filters,
       })
       const list = extractArray(res)
-      const meta = res?.data?.meta || res?.data?.data?.meta || {}
+      const meta = extractMeta(res)
       set({
         employees: list,
         pagination: {
-          current: page,
-          pageSize,
-          total: meta.total ?? list.length,
+          current: meta.currentPage || page,
+          pageSize: meta.pageSize || pageSize,
+          total: meta.totalItems !== undefined ? meta.totalItems : list.length,
         },
       })
       return list
@@ -39,6 +57,22 @@ export const useEmployeeStore = create((set, get) => ({
       return []
     } finally {
       set({ loading: false })
+    }
+  },
+
+  // Lấy chi tiết nhân viên theo ID
+  fetchEmployeeById: async (id) => {
+    set({ detailLoading: true })
+    try {
+      const res = await getEmployeeById(id)
+      const detail = extractObject(res, null)
+      set({ selectedEmployee: detail })
+      return detail
+    } catch (err) {
+      message.error(err?.response?.data?.message || err?.message || 'Không thể tải chi tiết nhân viên!')
+      return null
+    } finally {
+      set({ detailLoading: false })
     }
   },
 

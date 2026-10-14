@@ -6,7 +6,7 @@ import {
   getPaymentSummary,
   getPaymentHistory,
 } from '../services/paymentService'
-import { extractArray, extractObject } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const usePaymentStore = create((set, get) => ({
   summary: null,
@@ -14,6 +14,7 @@ export const usePaymentStore = create((set, get) => ({
   paymentHistory: [],
   loading: false,
   processing: false,
+  pagination: { current: 1, pageSize: 8, total: 0 },
 
   // Lấy báo cáo tổng hợp doanh thu thanh toán
   fetchPaymentSummary: async (params = {}) => {
@@ -37,7 +38,15 @@ export const usePaymentStore = create((set, get) => ({
     try {
       const res = await getTransactions(params)
       const list = extractArray(res)
-      set({ transactions: list })
+      const meta = extractMeta(res)
+      set({
+        transactions: list,
+        pagination: {
+          current: params.page || 1,
+          pageSize: params.limit || 8,
+          total: meta.totalItems || list.length,
+        },
+      })
       return list
     } catch (err) {
       console.error('Lỗi khi tải danh sách giao dịch:', err)

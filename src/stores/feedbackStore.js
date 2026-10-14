@@ -10,8 +10,10 @@ import { extractObject } from '../utils/apiHelper'
 export const useFeedbackStore = create((set, get) => ({
   feedbackData: { summary: {}, feedbacks: [] },
   loading: false,
+  detailLoading: false,
   selectedRating: undefined,
   selectedFeedback: null,
+  pagination: { current: 1, pageSize: 8, total: 0 },
 
   // Lấy danh sách đánh giá & thống kê tổng quan
   fetchFeedbacks: async (params = {}) => {
@@ -20,7 +22,14 @@ export const useFeedbackStore = create((set, get) => ({
       const queryParams = typeof params === 'object' ? params : { rating: params }
       const res = await getFeedbacks(queryParams)
       const data = extractObject(res, { summary: {}, feedbacks: [] })
-      set({ feedbackData: data })
+      set({
+        feedbackData: data,
+        pagination: {
+          current: queryParams.page || 1,
+          pageSize: queryParams.limit || 8,
+          total: data.summary?.totalFeedbacks || data.feedbacks?.length || 0,
+        },
+      })
       return data
     } catch (err) {
       console.error('Lỗi khi tải danh sách đánh giá:', err)
@@ -32,6 +41,7 @@ export const useFeedbackStore = create((set, get) => ({
 
   // Chi tiết đánh giá
   fetchFeedbackById: async (id) => {
+    set({ detailLoading: true })
     try {
       const res = await getFeedbackById(id)
       const detail = extractObject(res, null)
@@ -40,6 +50,8 @@ export const useFeedbackStore = create((set, get) => ({
     } catch (err) {
       console.error('Lỗi khi tải chi tiết phản hồi:', err)
       return null
+    } finally {
+      set({ detailLoading: false })
     }
   },
 

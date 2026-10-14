@@ -33,3 +33,18 @@ export const extractObject = (res, fallback = null) => {
   }
   return fallback
 }
+
+/**
+ * Trích xuất metadata phân trang an toàn từ response
+ * @param {any} res
+ * @returns {{ currentPage: number, totalPages: number, totalItems: number, pageSize: number }}
+ */
+export const extractMeta = (res) => {
+  const meta = res?.data?.meta || res?.meta || {}
+  return {
+    currentPage: Number(meta.page ?? meta.currentPage ?? 1),
+    totalPages: Number(meta.totalPages ?? 1),
+    totalItems: Number(meta.totalElements ?? meta.totalItems ?? meta.total ?? 0),
+    pageSize: Number(meta.limit ?? meta.pageSize ?? 10),
+  }
+}

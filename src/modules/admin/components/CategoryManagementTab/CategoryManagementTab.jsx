@@ -11,6 +11,9 @@ import {
   Typography,
   Popconfirm,
   Alert,
+  Descriptions,
+  Spin,
+  Badge,
 } from 'antd'
 import {
   PlusOutlined,
@@ -20,6 +23,7 @@ import {
   ReloadOutlined,
   AppstoreOutlined,
   QuestionCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { useCategoryStore } from '../../../../stores/categoryStore'
 import './CategoryManagementTab.scss'
@@ -30,8 +34,10 @@ export default function CategoryManagementTab() {
   const {
     categories,
     loading,
+    detailLoading,
     pagination,
     fetchCategories,
+    fetchCategoryById,
     createCategory,
     updateCategory,
     deleteCategory,
@@ -53,6 +59,10 @@ export default function CategoryManagementTab() {
   const [editingCategory, setEditingCategory] = useState(null)
   const [editForm] = Form.useForm()
 
+  // Detail Modal
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [viewingCategory, setViewingCategory] = useState(null)
+
   const handleApplyFilter = () => {
     fetchCategories(1, pagination?.pageSize || 8, keyword.trim())
   }
@@ -67,7 +77,10 @@ export default function CategoryManagementTab() {
   }
 
   const handleCreateSubmit = async (values) => {
-    const ok = await createCategory(values)
+    // Không truyền categoryId vì BE tự sinh LSP001, LSP002...
+    const ok = await createCategory({
+      categoryName: values.categoryName,
+    })
     if (ok) {
       setIsCreateModalOpen(false)
       createForm.resetFields()
@@ -75,22 +88,38 @@ export default function CategoryManagementTab() {
     }
   }
 
-  const handleOpenEdit = (record) => {
+  // Bấm nút Sửa: Gọi API lấy chi tiết rồi fill dữ liệu vào form
+  const handleOpenEdit = async (record) => {
     setEditingCategory(record)
-    editForm.setFieldsValue({
-      categoryName: record.categoryName,
-    })
     setIsEditModalOpen(true)
+    const detail = await fetchCategoryById(record.categoryId)
+    const catData = detail || record
+    setEditingCategory(catData)
+    editForm.setFieldsValue({
+      categoryName: catData.categoryName,
+    })
   }
 
   const handleEditSubmit = async (values) => {
     if (!editingCategory?.categoryId) return
-    const ok = await updateCategory(editingCategory.categoryId, values)
+    const ok = await updateCategory(editingCategory.categoryId, {
+      categoryName: values.categoryName,
+    })
     if (ok) {
       setIsEditModalOpen(false)
       editForm.resetFields()
       setEditingCategory(null)
       fetchCategories(pagination?.current || 1, pagination?.pageSize || 8, keyword.trim())
+    }
+  }
+
+  // Bấm nút Xem chi tiết: Gọi API lấy chi tiết
+  const handleOpenDetail = async (record) => {
+    setViewingCategory(record)
+    setIsDetailModalOpen(true)
+    const detail = await fetchCategoryById(record.categoryId)
+    if (detail) {
+      setViewingCategory(detail)
     }
   }
 
@@ -118,30 +147,46 @@ export default function CategoryManagementTab() {
       ),
     },
     {
+      title: 'Số Mặt Hàng',
+      dataIndex: 'productCount',
+      key: 'productCount',
+      width: 140,
+      render: (count) => (
+        <Badge
+          count={count ?? 0}
+          overflowCount={999}
+          style={{ backgroundColor: count > 0 ? '#108ee9' : '#d9d9d9', fontWeight: 600 }}
+        />
+      ),
+    },
+    {
       title: 'Hành động',
       key: 'actions',
-      width: 140,
+      width: 150,
       render: (_, record) => (
         <Space size="small">
           <Button
             type="text"
+            icon={<EyeOutlined style={{ color: '#52c41a' }} />}
+            onClick={() => handleOpenDetail(record)}
+            title="Xem chi tiết"
+          />
+          <Button
+            type="text"
             icon={<EditOutlined style={{ color: '#1890ff' }} />}
             onClick={() => handleOpenEdit(record)}
-          >
-            Sửa
-          </Button>
+            title="Sửa ngành hàng"
+          />
           <Popconfirm
             title="Xóa ngành hàng này?"
-            description={`Bạn có chắc chắn muốn xóa "${record.categoryName}"? Các sản phẩm thuộc ngành này có thể bị ảnh hưởng.`}
+            description={`Bạn có chắc chắn muốn xóa "${record.categoryName}"?`}
             onConfirm={() => handleDelete(record.categoryId)}
             icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
             okText="Xóa"
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
           >
-            <Button type="text" danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
+            <Button type="text" danger icon={<DeleteOutlined />} title="Xóa" />
           </Popconfirm>
         </Space>
       ),
@@ -264,6 +309,48 @@ export default function CategoryManagementTab() {
           </div>
         </Form>
       </Modal>
+
+      {/* Modal Xem Chi Tiết Ngành Hàng */}
+      <Modal
+        title={
+          <Space>
+            <AppstoreOutlined style={{ color: '#1890ff' }} />
+            <span>Chi Tiết Ngành Hàng: {viewingCategory?.categoryName || ''}</span>
+          </Space>
+        }
+        open={isDetailModalOpen}
+        onCancel={() => {
+          setIsDetailModalOpen(false)
+          setViewingCategory(null)
+        }}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)}>
+            Đóng
+          </Button>,
+        ]}
+        width={500}
+      >
+        <Spin spinning={detailLoading}>
+          {viewingCategory && (
+            <Descriptions bordered column={1} size="middle" style={{ marginTop: 12 }}>
+              <Descriptions.Item label="Mã Ngành Hàng">
+                <Tag color="blue" style={{ fontWeight: 600 }}>{viewingCategory.categoryId}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Tên Ngành Hàng">
+                <Text strong>{viewingCategory.categoryName}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Số Lượng Sản Phẩm">
+                <Badge
+                  count={viewingCategory.productCount ?? 0}
+                  overflowCount={999}
+                  style={{ backgroundColor: '#108ee9', fontWeight: 600 }}
+                />
+              </Descriptions.Item>
+            </Descriptions>
+          )}
+        </Spin>
+      </Modal>
     </Card>
   )
 }
+

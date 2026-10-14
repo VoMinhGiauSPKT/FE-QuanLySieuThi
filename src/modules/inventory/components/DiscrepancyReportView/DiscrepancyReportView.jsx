@@ -80,32 +80,40 @@ export default function DiscrepancyReportView() {
     }))
   }
 
-  const handleFormSubmit = async () => {
-    const details = Object.keys(auditData)
+  const handleFormSubmit = async (values) => {
+    const items = Object.keys(auditData)
       .map((productId) => {
         const prod = safeProducts.find((p) => p.productId === productId)
         const item = auditData[productId]
         const actual = Number(item.actualQuantity) ?? (prod?.stockQuantity || 0)
         const system = prod?.stockQuantity || 0
+        const diff = actual - system
         return {
           productId,
           actualQuantity: actual,
           systemQuantity: system,
-          discrepancyQuantity: actual - system,
+          difference: diff,
           reason: item.reason || '',
         }
       })
-      .filter((item) => item.discrepancyQuantity !== 0 || item.reason)
+      .filter((item) => item.difference !== 0 || item.reason)
 
-    if (details.length === 0) {
+    const payload = {
+      auditTitle: values.auditTitle || 'Biên bản kiểm kê kho',
+      note: values.note || '',
+      items: items.map((i) => ({
+        productId: i.productId,
+        actualQuantity: i.actualQuantity,
+        reason: i.reason || 'Kiểm kê định kỳ',
+      })),
+    }
+
+    if (items.length === 0) {
       Modal.confirm({
         title: 'Không có chênh lệch tồn kho',
         content: 'Số lượng thực tế của tất cả sản phẩm đều trùng khớp với số lượng trên hệ thống. Bạn vẫn muốn lập biên bản?',
         onOk: async () => {
-          const ok = await createReport({
-            reportName: form.getFieldValue('reportName') || 'Biên bản kiểm kê kho định kỳ',
-            details: [],
-          })
+          const ok = await createReport(payload)
           if (ok) {
             setIsModalOpen(false)
             form.resetFields()
@@ -116,10 +124,7 @@ export default function DiscrepancyReportView() {
       return
     }
 
-    const ok = await createReport({
-      reportName: form.getFieldValue('reportName') || 'Biên bản kiểm kê chênh lệch kho',
-      details,
-    })
+    const ok = await createReport(payload)
     if (ok) {
       setIsModalOpen(false)
       form.resetFields()
@@ -132,29 +137,34 @@ export default function DiscrepancyReportView() {
       title: 'Mã Biên Bản',
       dataIndex: 'reportId',
       key: 'reportId',
-      render: (id) => <Text code>{id ? String(id).substring(0, 8) + '...' : ''}</Text>,
+      render: (id) => <Text code>{id ? String(id).substring(0, 10) : ''}</Text>,
     },
     {
-      title: 'Tên Biên Bản',
-      dataIndex: 'reportName',
-      key: 'reportName',
-      render: (t) => <Text strong>{t || 'Biên bản kiểm kê'}</Text>,
+      title: 'Tiêu Đề Biên Bản',
+      dataIndex: 'auditTitle',
+      key: 'auditTitle',
+      render: (t, r) => <Text strong>{t || r.reportName || 'Biên bản kiểm kê'}</Text>,
+    },
+    {
+      title: 'Người Lập',
+      key: 'createdBy',
+      render: (_, r) => <Text>{r.createdBy?.fullName || r.createdBy?.username || 'Thủ kho'}</Text>,
+    },
+    {
+      title: 'Số Mục Lệch',
+      dataIndex: 'totalDiscrepancyItems',
+      key: 'totalDiscrepancyItems',
+      render: (num) => (
+        <Tag color={num > 0 ? 'volcano' : 'green'}>
+          {num !== undefined ? `${num} mặt hàng` : '0 mặt hàng'}
+        </Tag>
+      ),
     },
     {
       title: 'Thời Gian Lập',
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (d) => formatDateTime(d),
-    },
-    {
-      title: 'Trạng Thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (st) => (
-        <Tag color={st === 'RESOLVED' ? 'green' : 'orange'}>
-          {st === 'RESOLVED' ? 'Đã giải quyết' : 'Cần đối soát'}
-        </Tag>
-      ),
     },
     {
       title: 'Thao tác',
@@ -272,13 +282,28 @@ export default function DiscrepancyReportView() {
         width={960}
         destroyOnClose
       >
-        <Form form={form} layout="vertical" onFinish={handleFormSubmit} initialValues={{ reportName: 'Biên bản kiểm kê kho định kỳ' }}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleFormSubmit}
+          initialValues={{
+            auditTitle: 'Kiểm kê kho định kỳ',
+            note: 'Kiểm tra hư hỏng và hạn sử dụng',
+          }}
+        >
           <Form.Item
-            name="reportName"
-            label="Tiêu Đề / Lý Do Kiểm Kê"
+            name="auditTitle"
+            label="Tiêu Đề / Tên Biên Bản Kiểm Kê"
             rules={[{ required: true, message: 'Vui lòng nhập tên biên bản!' }]}
           >
             <Input placeholder="Ví dụ: Kiểm kê định kỳ cuối tháng, kiểm kê đột xuất..." size="large" />
+          </Form.Item>
+
+          <Form.Item
+            name="note"
+            label="Ghi Chú Đợt Kiểm Kê"
+          >
+            <Input placeholder="Ví dụ: Kiểm tra hạn dùng và tình trạng bao bì..." />
           </Form.Item>
 
           <Alert
@@ -318,26 +343,52 @@ export default function DiscrepancyReportView() {
             Đóng
           </Button>,
         ]}
-        width={760}
+        width={850}
       >
         {selectedReport && (
           <div>
             <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
               <div>
-                <Text type="secondary">Tên biên bản: </Text>
-                <Text strong>{selectedReport.reportName}</Text>
+                <Text type="secondary">Mã biên bản: </Text>
+                <Text strong>{selectedReport.reportId}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Tiêu đề: </Text>
+                <Text strong>{selectedReport.auditTitle || selectedReport.reportName}</Text>
+              </div>
+              {selectedReport.note && (
+                <div>
+                  <Text type="secondary">Ghi chú: </Text>
+                  <Text>{selectedReport.note}</Text>
+                </div>
+              )}
+              <div>
+                <Text type="secondary">Người lập: </Text>
+                <Text>{selectedReport.createdBy?.fullName || selectedReport.createdBy?.username || 'Thủ kho'}</Text>
               </div>
               <div>
                 <Text type="secondary">Thời gian: </Text>
                 <Text>{formatDateTime(selectedReport.createdAt)}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Số mặt hàng chênh lệch: </Text>
+                <Tag color={selectedReport.totalDiscrepancyItems > 0 ? 'red' : 'green'}>
+                  {selectedReport.totalDiscrepancyItems ?? 0} mặt hàng
+                </Tag>
               </div>
             </Space>
 
             <Divider style={{ margin: '12px 0' }}>Danh Sách Mặt Hàng Đối Soát</Divider>
 
             <Table
-              dataSource={selectedReport.details || []}
+              dataSource={selectedReport.items || selectedReport.details || []}
               columns={[
+                {
+                  title: 'Mã SP',
+                  dataIndex: 'productId',
+                  key: 'productId',
+                  render: (id) => <Text code>{id || '-'}</Text>,
+                },
                 {
                   title: 'Tên Sản Phẩm',
                   dataIndex: 'productName',
@@ -345,24 +396,47 @@ export default function DiscrepancyReportView() {
                   render: (t) => <Text strong>{t}</Text>,
                 },
                 {
-                  title: 'Tồn Hệ Thống',
-                  dataIndex: 'systemQuantity',
-                  key: 'systemQuantity',
+                  title: 'Ngành Hàng',
+                  dataIndex: 'categoryName',
+                  key: 'categoryName',
+                  render: (c) => <Tag color="blue">{c || 'Chung'}</Tag>,
                 },
                 {
-                  title: 'Thực Tế Đếm Được',
+                  title: 'Tồn HT',
+                  dataIndex: 'systemQuantity',
+                  key: 'systemQuantity',
+                  render: (q) => <Tag color="cyan">{q}</Tag>,
+                },
+                {
+                  title: 'Thực Tế',
                   dataIndex: 'actualQuantity',
                   key: 'actualQuantity',
+                  render: (q) => <Tag color="purple">{q}</Tag>,
                 },
                 {
                   title: 'Chênh Lệch',
-                  dataIndex: 'discrepancyQuantity',
-                  key: 'discrepancyQuantity',
-                  render: (d) => (
-                    <Tag color={d === 0 ? 'default' : d > 0 ? 'green' : 'red'}>
-                      {d > 0 ? `+${d}` : d}
-                    </Tag>
-                  ),
+                  dataIndex: 'difference',
+                  key: 'difference',
+                  render: (d, record) => {
+                    const diff = d !== undefined ? d : (record.actualQuantity - record.systemQuantity)
+                    return (
+                      <Tag color={diff === 0 ? 'default' : diff > 0 ? 'green' : 'red'}>
+                        {diff > 0 ? `+${diff}` : diff}
+                      </Tag>
+                    )
+                  },
+                },
+                {
+                  title: 'Trạng Thái',
+                  dataIndex: 'status',
+                  key: 'status',
+                  render: (st, record) => {
+                    const diff = record.difference !== undefined ? record.difference : (record.actualQuantity - record.systemQuantity)
+                    const statusVal = st || (diff < 0 ? 'SHORTAGE' : diff > 0 ? 'SURPLUS' : 'MATCHED')
+                    if (statusVal === 'SHORTAGE') return <Tag color="red">Thiếu hụt</Tag>
+                    if (statusVal === 'SURPLUS') return <Tag color="green">Dư thừa</Tag>
+                    return <Tag color="default">Khớp</Tag>
+                  },
                 },
                 {
                   title: 'Lý Do',
@@ -370,7 +444,7 @@ export default function DiscrepancyReportView() {
                   key: 'reason',
                 },
               ]}
-              rowKey={(r, idx) => r.productId || idx}
+              rowKey={(r, idx) => r.detailId || r.productId || idx}
               pagination={false}
               size="small"
               loading={detailLoading}
@@ -381,3 +455,4 @@ export default function DiscrepancyReportView() {
     </Card>
   )
 }
+

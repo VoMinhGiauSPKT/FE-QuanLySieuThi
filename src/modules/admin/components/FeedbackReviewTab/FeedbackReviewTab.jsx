@@ -10,12 +10,15 @@ import {
   Space,
   Select,
   Button,
+  Modal,
+  Descriptions,
+  Spin,
 } from 'antd'
 import {
   StarFilled,
   ReloadOutlined,
   CommentOutlined,
-  SmileOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { formatDateTime } from '../../../../utils/formatters'
 import { useFeedbackStore } from '../../../../stores/feedbackStore'
@@ -24,21 +27,42 @@ import './FeedbackReviewTab.scss'
 const { Title, Text, Paragraph } = Typography
 
 export default function FeedbackReviewTab() {
-  const { feedbackData, loading, selectedRating, fetchFeedbacks, setSelectedRating } = useFeedbackStore()
+  const {
+    feedbackData,
+    loading,
+    detailLoading,
+    pagination,
+    selectedRating,
+    fetchFeedbacks,
+    fetchFeedbackById,
+    setSelectedRating,
+  } = useFeedbackStore()
   const [internalRating, setInternalRating] = useState(selectedRating || 0)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [viewingFeedback, setViewingFeedback] = useState(null)
 
   useEffect(() => {
-    fetchFeedbacks(internalRating)
+    fetchFeedbacks(internalRating ? { rating: internalRating } : {})
   }, [fetchFeedbacks, internalRating])
 
   const handleRatingChange = (val) => {
     setInternalRating(val)
     setSelectedRating(val)
-    fetchFeedbacks(val)
+    fetchFeedbacks(val ? { rating: val } : {})
   }
 
   const handleRefresh = () => {
-    fetchFeedbacks(internalRating)
+    fetchFeedbacks(internalRating ? { rating: internalRating } : {})
+  }
+
+  // Bấm xem chi tiết đánh giá: Gọi API GET /api/feedback/:id
+  const handleOpenDetail = async (record) => {
+    setViewingFeedback(record)
+    setIsDetailModalOpen(true)
+    const detail = await fetchFeedbackById(record.feedbackId)
+    if (detail) {
+      setViewingFeedback(detail)
+    }
   }
 
   const summary = feedbackData?.summary || {
@@ -100,8 +124,22 @@ export default function FeedbackReviewTab() {
       title: 'Thời Gian',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 170,
+      width: 160,
       render: (d) => formatDateTime(d),
+    },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 100,
+      render: (_, record) => (
+        <Button
+          type="text"
+          icon={<EyeOutlined style={{ color: '#1890ff' }} />}
+          onClick={() => handleOpenDetail(record)}
+        >
+          Chi Tiết
+        </Button>
+      ),
     },
   ]
 
@@ -200,9 +238,61 @@ export default function FeedbackReviewTab() {
           dataSource={feedbacks}
           rowKey="feedbackId"
           loading={loading}
-          pagination={{ pageSize: 6 }}
+          pagination={{
+            current: pagination?.current || 1,
+            pageSize: pagination?.pageSize || 6,
+            total: pagination?.total || feedbacks.length,
+            showTotal: (t) => `Tổng cộng ${t} đánh giá`,
+          }}
         />
       </Card>
+
+      {/* Modal Xem Chi Tiết Đánh Giá */}
+      <Modal
+        title="Chi Tiết Ý Kiến Đánh Giá Của Khách Hàng"
+        open={isDetailModalOpen}
+        onCancel={() => {
+          setIsDetailModalOpen(false)
+          setViewingFeedback(null)
+        }}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)}>
+            Đóng
+          </Button>,
+        ]}
+        width={540}
+      >
+        <Spin spinning={detailLoading}>
+          {viewingFeedback && (
+            <Descriptions bordered column={1} size="middle" style={{ marginTop: 12 }}>
+              <Descriptions.Item label="Mã Đánh Giá">
+                <Tag color="blue">{viewingFeedback.feedbackId}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Khách Hàng">
+                <Text strong>{viewingFeedback.customerName || 'Khách hàng ẩn danh'}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Số Điện Thoại">
+                {viewingFeedback.phoneNumber || <Text type="secondary">Không cung cấp</Text>}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mức Độ Hài Lòng">
+                <Space>
+                  <Rate disabled value={viewingFeedback.rating} style={{ fontSize: 16, color: '#faad14' }} />
+                  <Text strong>({viewingFeedback.rating} / 5 sao)</Text>
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời Gian Gửi">
+                {formatDateTime(viewingFeedback.createdAt)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Nội Dung Góp Ý">
+                <Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {viewingFeedback.comment || <Text type="secondary">(Không có nhận xét chi tiết)</Text>}
+                </Paragraph>
+              </Descriptions.Item>
+            </Descriptions>
+          )}
+        </Spin>
+      </Modal>
     </div>
   )
 }
+

@@ -2,14 +2,17 @@ import { create } from 'zustand'
 import { message } from 'antd'
 import {
   getProducts,
+  getProductById,
   updateProduct,
   getLowStockAlerts,
 } from '../services/productService'
-import { extractArray } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const useProductStore = create((set, get) => ({
   products: [],
+  selectedProduct: null,
   loading: false,
+  detailLoading: false,
   pagination: { current: 1, pageSize: 8, total: 0 },
   filters: {},
 
@@ -19,8 +22,23 @@ export const useProductStore = create((set, get) => ({
   loadingLowStock: false,
   threshold: 10,
 
-  // Lấy danh sách sản phẩm
-  fetchProducts: async (page = 1, pageSize = 8, filters = {}) => {
+  // Lấy danh sách sản phẩm (hỗ trợ cả fetchProducts(page, pageSize, filters) và fetchProducts({ page, limit, ... }))
+  fetchProducts: async (arg1 = 1, arg2 = 8, arg3 = {}) => {
+    let page = 1
+    let pageSize = 8
+    let filters = {}
+
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      page = arg1.page || 1
+      pageSize = arg1.limit || arg1.pageSize || 8
+      const { page: _p, limit: _l, pageSize: _ps, ...rest } = arg1
+      filters = rest
+    } else {
+      page = Number(arg1) || 1
+      pageSize = Number(arg2) || 8
+      filters = arg3 || {}
+    }
+
     set({ loading: true, filters })
     try {
       const res = await getProducts({
@@ -29,13 +47,13 @@ export const useProductStore = create((set, get) => ({
         ...filters,
       })
       const list = extractArray(res)
-      const meta = res?.data?.meta || res?.data?.data?.meta || {}
+      const meta = extractMeta(res)
       set({
         products: list,
         pagination: {
           current: page,
           pageSize,
-          total: meta.total ?? list.length,
+          total: meta.totalItems || list.length,
         },
       })
       return list
@@ -44,6 +62,22 @@ export const useProductStore = create((set, get) => ({
       return []
     } finally {
       set({ loading: false })
+    }
+  },
+
+  // Lấy chi tiết sản phẩm theo ID
+  fetchProductById: async (id) => {
+    set({ detailLoading: true })
+    try {
+      const res = await getProductById(id)
+      const detail = extractObject(res, null)
+      set({ selectedProduct: detail })
+      return detail
+    } catch (err) {
+      message.error(err?.response?.data?.message || err?.message || 'Không thể tải chi tiết sản phẩm!')
+      return null
+    } finally {
+      set({ detailLoading: false })
     }
   },
 

@@ -14,6 +14,7 @@ import {
   Select,
   Tag,
   Flex,
+  message,
 } from 'antd'
 import {
   PlusOutlined,
@@ -37,6 +38,7 @@ export default function ImportReceiptView() {
   const safeReceipts = Array.isArray(receipts) ? receipts : []
 
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const [form] = Form.useForm()
   const [selectedReceipt, setSelectedReceipt] = useState(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
@@ -114,22 +116,47 @@ export default function ImportReceiptView() {
   )
 
   const handleSubmit = async (values) => {
+    setSubmitted(true)
+
+    // Kiểm tra không cho để trống tên sản phẩm ở bất kỳ dòng nào
+    const emptyNameIndex = items.findIndex((i) => !i.productName || !i.productName.trim())
+    if (emptyNameIndex !== -1) {
+      message.error(`Dòng ${emptyNameIndex + 1}: Vui lòng nhập tên sản phẩm, không được để trống!`)
+      return
+    }
+
+    // Kiểm tra hạn sử dụng bắt buộc
+    const emptyExpIndex = items.findIndex((i) => !i.expirationDate)
+    if (emptyExpIndex !== -1) {
+      message.warning(`Dòng ${emptyExpIndex + 1}: Vui lòng chọn hạn sử dụng (HSD)!`)
+      return
+    }
+
     const payload = {
       supplierName: values.supplierName,
-      details: items.map((i) => ({
-        productName: i.productName || 'Sản phẩm mới',
-        categoryId: i.categoryId || defaultCatId,
-        purchasedQuantity: Number(i.purchasedQuantity) || 1,
-        purchasePrice: Number(i.purchasePrice) || 0,
-        unitPrice: Number(i.unitPrice) || 0,
-        expirationDate: i.expirationDate ? i.expirationDate.format('YYYY-MM-DD') : null,
-      })),
+      items: items.map((i) => {
+        const itemObj = {
+          productName: i.productName.trim(),
+          categoryId: i.categoryId || defaultCatId,
+          purchasedQuantity: Number(i.purchasedQuantity) || 1,
+          purchasePrice: Number(i.purchasePrice) || 0,
+          unitPrice: Number(i.unitPrice) || 0,
+          expirationDate: i.expirationDate
+            ? (typeof i.expirationDate === 'string' ? i.expirationDate : i.expirationDate.format('YYYY-MM-DD'))
+            : null,
+        }
+        if (i.productId) {
+          itemObj.productId = i.productId
+        }
+        return itemObj
+      }),
     }
 
     const ok = await createReceipt(payload)
     if (ok) {
       setIsModalOpen(false)
       form.resetFields()
+      setSubmitted(false)
       setItems([
         {
           key: 1,
@@ -150,13 +177,18 @@ export default function ImportReceiptView() {
       title: 'Mã Phiếu Nhập',
       dataIndex: 'voucherId',
       key: 'voucherId',
-      render: (id) => <Text code>{id ? String(id).substring(0, 8) + '...' : ''}</Text>,
+      render: (id) => <Text code>{id ? String(id).substring(0, 10) : ''}</Text>,
     },
     {
       title: 'Nhà Cung Cấp',
       dataIndex: 'supplierName',
       key: 'supplierName',
       render: (sup) => <Text strong>{sup || 'NCC Nội Bộ'}</Text>,
+    },
+    {
+      title: 'Người Lập Phiếu',
+      key: 'createdBy',
+      render: (_, r) => <Text>{r.createdBy?.fullName || r.createdBy?.username || 'Thủ kho'}</Text>,
     },
     {
       title: 'Tổng Giá Trị Nhập',
@@ -188,15 +220,30 @@ export default function ImportReceiptView() {
 
   const itemColumns = [
     {
-      title: 'Tên Mặt Hàng',
-      key: 'productName',
-      render: (_, record) => (
-        <Input
-          placeholder="Nhập tên mặt hàng..."
-          value={record.productName}
-          onChange={(e) => handleItemChange(record.key, 'productName', e.target.value)}
-        />
+      title: (
+        <span>
+          <span style={{ color: '#ff4d4f', marginRight: 4 }}>*</span>Tên Mặt Hàng
+        </span>
       ),
+      key: 'productName',
+      render: (_, record) => {
+        const isError = submitted && !record.productName?.trim()
+        return (
+          <div>
+            <Input
+              placeholder="Nhập tên mặt hàng (bắt buộc)..."
+              value={record.productName}
+              status={isError ? 'error' : ''}
+              onChange={(e) => handleItemChange(record.key, 'productName', e.target.value)}
+            />
+            {isError && (
+              <div style={{ color: '#ff4d4f', fontSize: 11, marginTop: 2, lineHeight: 1.2 }}>
+                Không được để trống tên sản phẩm
+              </div>
+            )}
+          </div>
+        )
+      },
     },
     {
       title: 'Loại Sản Phẩm',
@@ -258,13 +305,18 @@ export default function ImportReceiptView() {
       ),
     },
     {
-      title: 'HSD',
+      title: (
+        <span>
+          <span style={{ color: '#ff4d4f', marginRight: 4 }}>*</span>HSD
+        </span>
+      ),
       key: 'expirationDate',
       width: 140,
       render: (_, record) => (
         <DatePicker
           placeholder="Chọn HSD"
           value={record.expirationDate}
+          status={submitted && !record.expirationDate ? 'warning' : ''}
           onChange={(date) => handleItemChange(record.key, 'expirationDate', date)}
           format="DD/MM/YYYY"
         />
@@ -294,7 +346,10 @@ export default function ImportReceiptView() {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setSubmitted(false)
+              setIsModalOpen(true)
+            }}
             style={{ borderRadius: 8 }}
           >
             Tạo Phiếu Nhập Kho Mới
@@ -324,7 +379,10 @@ export default function ImportReceiptView() {
           </Space>
         }
         open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          setSubmitted(false)
+          setIsModalOpen(false)
+        }}
         footer={null}
         width={960}
         destroyOnClose
@@ -364,7 +422,14 @@ export default function ImportReceiptView() {
 
           <div style={{ textAlign: 'right', marginTop: 24 }}>
             <Space>
-              <Button onClick={() => setIsModalOpen(false)}>Hủy</Button>
+              <Button
+                onClick={() => {
+                  setSubmitted(false)
+                  setIsModalOpen(false)
+                }}
+              >
+                Hủy
+              </Button>
               <Button type="primary" htmlType="submit" loading={creating}>
                 Xác Nhận & Nhập Kho
               </Button>
@@ -388,14 +453,22 @@ export default function ImportReceiptView() {
             Đóng
           </Button>,
         ]}
-        width={800}
+        width={850}
       >
         {selectedReceipt && (
           <div>
             <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
               <div>
+                <Text type="secondary">Mã phiếu: </Text>
+                <Text strong>{selectedReceipt.voucherId}</Text>
+              </div>
+              <div>
                 <Text type="secondary">Nhà cung cấp: </Text>
                 <Text strong>{selectedReceipt.supplierName || 'NCC Nội Bộ'}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Người lập phiếu: </Text>
+                <Text>{selectedReceipt.createdBy?.fullName || selectedReceipt.createdBy?.username || 'Thủ kho'}</Text>
               </div>
               <div>
                 <Text type="secondary">Thời gian nhập: </Text>
@@ -412,8 +485,14 @@ export default function ImportReceiptView() {
             <Divider style={{ margin: '12px 0' }}>Mặt Hàng Đã Nhập</Divider>
 
             <Table
-              dataSource={selectedReceipt.details || []}
+              dataSource={selectedReceipt.items || selectedReceipt.details || []}
               columns={[
+                {
+                  title: 'Mã SP',
+                  dataIndex: 'productId',
+                  key: 'productId',
+                  render: (id) => <Text code>{id || '-'}</Text>,
+                },
                 {
                   title: 'Tên Mặt Hàng',
                   dataIndex: 'productName',
@@ -421,10 +500,16 @@ export default function ImportReceiptView() {
                   render: (t) => <Text strong>{t}</Text>,
                 },
                 {
-                  title: 'Số Lượng',
+                  title: 'Loại SP',
+                  dataIndex: 'categoryName',
+                  key: 'categoryName',
+                  render: (c) => <Tag color="blue">{c || 'Chung'}</Tag>,
+                },
+                {
+                  title: 'SL Nhập',
                   dataIndex: 'purchasedQuantity',
                   key: 'purchasedQuantity',
-                  render: (q) => <Tag color="blue">{q}</Tag>,
+                  render: (q) => <Tag color="purple">{q}</Tag>,
                 },
                 {
                   title: 'Giá Nhập',
@@ -433,10 +518,10 @@ export default function ImportReceiptView() {
                   render: (p) => formatCurrency(p),
                 },
                 {
-                  title: 'Giá Bán',
-                  dataIndex: 'unitPrice',
-                  key: 'unitPrice',
-                  render: (p) => formatCurrency(p),
+                  title: 'Thành Tiền',
+                  dataIndex: 'lineTotal',
+                  key: 'lineTotal',
+                  render: (lt, rec) => formatCurrency(lt ?? (rec.purchasedQuantity * rec.purchasePrice)),
                 },
                 {
                   title: 'Hạn Sử Dụng',
@@ -445,7 +530,7 @@ export default function ImportReceiptView() {
                   render: (d) => formatDate(d),
                 },
               ]}
-              rowKey={(r, idx) => r.productId || idx}
+              rowKey={(r, idx) => r.purchaseDetailId || r.productId || idx}
               pagination={false}
               size="small"
               loading={detailLoading}

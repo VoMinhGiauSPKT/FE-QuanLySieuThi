@@ -46,6 +46,8 @@ export const API_ENDPOINTS = {
   REPORT: {
     STOCK_DISCREPANCY: '/report/stock-discrepancy',
     STOCK_DISCREPANCY_DETAIL: (id) => `/report/stock-discrepancy/${id}`,
+    REVENUE: '/report/revenue',
+    EXPORT_EXCEL: '/report/export-excel',
   },
   FEEDBACK: {
     BASE: '/feedback',

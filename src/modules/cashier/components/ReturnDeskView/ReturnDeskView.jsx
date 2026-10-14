@@ -12,12 +12,15 @@ import {
   Alert,
   Popconfirm,
   Descriptions,
+  Modal,
+  Spin,
 } from 'antd'
 import {
   SearchOutlined,
   RollbackOutlined,
   HistoryOutlined,
   FileProtectOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { formatCurrency, formatDateTime } from '../../../../utils/formatters'
 import { useReturnReceiptStore } from '../../../../stores/returnReceiptStore'
@@ -27,7 +30,14 @@ import './ReturnDeskView.scss'
 const { Title, Text } = Typography
 
 export default function ReturnDeskView() {
-  const { returnReceipts, loading: loadingReturn, fetchReturnReceipts, createReturnReceipt } = useReturnReceiptStore()
+  const {
+    returnReceipts,
+    loading: loadingReturn,
+    detailLoading,
+    fetchReturnReceipts,
+    fetchReturnReceiptById,
+    createReturnReceipt,
+  } = useReturnReceiptStore()
   const fetchInvoiceDetail = useInvoiceStore((state) => state.fetchInvoiceDetail)
 
   const [searchInvoiceId, setSearchInvoiceId] = useState('')
@@ -35,6 +45,9 @@ export default function ReturnDeskView() {
   const [selectedReturns, setSelectedReturns] = useState({}) // { [productId]: quantity }
   const [returnReason, setReturnReason] = useState('')
   const [searching, setSearching] = useState(false)
+
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [viewingReceipt, setViewingReceipt] = useState(null)
 
   useEffect(() => {
     fetchReturnReceipts({ limit: 10 })
@@ -68,11 +81,14 @@ export default function ReturnDeskView() {
 
   const handleConfirmReturn = async () => {
     if (!invoiceDetail?.invoiceId || itemsToReturn.length === 0) return
+    // Schema BE: Module 9, invoiceId, reason, items: [{ productId, returnedQuantity }]
+    // Không truyền returnReceiptId vì mã tự sinh
     const payload = {
       invoiceId: invoiceDetail.invoiceId,
       reason: returnReason || 'Khách đổi trả tại quầy',
       items: itemsToReturn.map((item) => ({
         productId: item.productId,
+        returnedQuantity: selectedReturns[item.productId],
         returnQuantity: selectedReturns[item.productId],
       })),
     }
@@ -83,6 +99,16 @@ export default function ReturnDeskView() {
       setSelectedReturns({})
       setReturnReason('')
       fetchReturnReceipts({ limit: 10 })
+    }
+  }
+
+  // Bấm xem chi tiết phiếu trả hàng
+  const handleOpenDetail = async (record) => {
+    setViewingReceipt(record)
+    setIsDetailModalOpen(true)
+    const detail = await fetchReturnReceiptById(record.returnReceiptId)
+    if (detail) {
+      setViewingReceipt(detail)
     }
   }
 
@@ -138,21 +164,20 @@ export default function ReturnDeskView() {
       title: 'Mã Phiếu Trả',
       dataIndex: 'returnReceiptId',
       key: 'returnReceiptId',
-      render: (id) => <Text code>{id ? String(id).substring(0, 8) + '...' : ''}</Text>,
+      render: (id) => <Tag color="blue" style={{ fontWeight: 600 }}>{id}</Tag>,
     },
     {
       title: 'Mã Hóa Đơn Gốc',
       dataIndex: 'invoiceId',
       key: 'invoiceId',
-      render: (id) => <Text code>{id ? String(id).substring(0, 8) + '...' : ''}</Text>,
+      render: (id) => <Tag color="cyan">{id}</Tag>,
     },
     {
       title: 'Tổng Tiền Hoàn',
-      dataIndex: 'totalRefundAmount',
-      key: 'totalRefundAmount',
-      render: (amt) => (
+      key: 'refundAmount',
+      render: (_, r) => (
         <Text strong type="danger">
-          -{formatCurrency(amt)}
+          -{formatCurrency(r.refundAmount ?? r.totalRefundAmount ?? 0)}
         </Text>
       ),
     },
@@ -160,12 +185,27 @@ export default function ReturnDeskView() {
       title: 'Lý Do Đổi Trả',
       dataIndex: 'reason',
       key: 'reason',
+      render: (text) => text || <Text type="secondary">-</Text>,
     },
     {
       title: 'Thời Gian',
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (d) => formatDateTime(d),
+    },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 100,
+      render: (_, record) => (
+        <Button
+          type="text"
+          icon={<EyeOutlined style={{ color: '#1890ff' }} />}
+          onClick={() => handleOpenDetail(record)}
+        >
+          Chi Tiết
+        </Button>
+      ),
     },
   ]
 
@@ -294,6 +334,58 @@ export default function ReturnDeskView() {
         size="small"
         pagination={{ pageSize: 5 }}
       />
+
+      {/* Modal Chi Tiết Phiếu Trả Hàng */}
+      <Modal
+        title={
+          <Space>
+            <RollbackOutlined style={{ color: '#ff4d4f' }} />
+            <span>Chi Tiết Phiếu Trả Hàng #{viewingReceipt?.returnReceiptId || ''}</span>
+          </Space>
+        }
+        open={isDetailModalOpen}
+        onCancel={() => {
+          setIsDetailModalOpen(false)
+          setViewingReceipt(null)
+        }}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)}>
+            Đóng
+          </Button>,
+        ]}
+        width={600}
+      >
+        <Spin spinning={detailLoading}>
+          {viewingReceipt && (
+            <Descriptions bordered column={1} size="middle" style={{ marginTop: 12 }}>
+              <Descriptions.Item label="Mã Phiếu Trả">
+                <Tag color="blue" style={{ fontWeight: 600 }}>{viewingReceipt.returnReceiptId}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Mã Hóa Đơn Gốc">
+                <Tag color="cyan">{viewingReceipt.invoiceId}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Số Tiền Hoàn Cho Khách">
+                <Text strong style={{ color: '#ff4d4f', fontSize: 16 }}>
+                  -{formatCurrency(viewingReceipt.refundAmount ?? viewingReceipt.totalRefundAmount ?? 0)}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Lý Do Trả Hàng">
+                {viewingReceipt.reason || <Text type="secondary">-</Text>}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thu Ngân Tiếp Nhận">
+                {viewingReceipt.createdBy?.fullName || viewingReceipt.createdBy?.username || 'Thu ngân'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Khách Hàng">
+                {viewingReceipt.customer?.fullName ? `${viewingReceipt.customer.fullName} (${viewingReceipt.customer.phoneNumber || ''})` : 'Khách hàng'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời Gian Lập">
+                {formatDateTime(viewingReceipt.createdAt)}
+              </Descriptions.Item>
+            </Descriptions>
+          )}
+        </Spin>
+      </Modal>
     </Card>
   )
 }
+
