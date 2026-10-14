@@ -1,0 +1,36 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.overview-tab {
+  &__alert {
+    margin-bottom: 20px;
+    border-radius: $border-radius-md;
+  }
+
+  &__stat-card {
+    border-radius: $border-radius-lg !important;
+    box-shadow: $shadow-card !important;
+
+    &--green {
+      border-top: 4px solid $success-color !important;
+    }
+
+    &--blue {
+      border-top: 4px solid $primary-color !important;
+    }
+
+    &--red {
+      border-top: 4px solid $danger-color !important;
+    }
+
+    &--gold {
+      border-top: 4px solid $warning-color !important;
+    }
+  }
+
+  &__quick-card {
+    border-radius: $border-radius-lg !important;
+    box-shadow: $shadow-card !important;
+    margin-bottom: 24px;
+  }
+}

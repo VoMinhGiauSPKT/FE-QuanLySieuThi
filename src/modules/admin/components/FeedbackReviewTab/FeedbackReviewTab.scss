@@ -1,0 +1,27 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.feedback-review-tab {
+  &__stat-card {
+    border-radius: $border-radius-lg !important;
+    box-shadow: $shadow-card !important;
+    margin-bottom: 24px;
+  }
+
+  &__score-box {
+    text-align: center;
+    padding: 16px 0;
+
+    .score-title {
+      font-size: 52px !important;
+      color: $warning-color !important;
+      margin: 0 !important;
+      line-height: 1 !important;
+    }
+  }
+
+  &__table-card {
+    border-radius: $border-radius-lg !important;
+    box-shadow: $shadow-card !important;
+  }
+}

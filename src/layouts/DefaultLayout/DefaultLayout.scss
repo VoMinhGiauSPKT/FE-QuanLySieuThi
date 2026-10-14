@@ -1,0 +1,25 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.default-layout {
+  min-height: 100vh;
+  background-color: $bg-body;
+
+  &__content {
+    padding: 24px 32px;
+    width: 100%;
+    margin: 0 auto;
+
+    @include respond-to('sm') {
+      padding: 16px;
+    }
+  }
+
+  &__footer {
+    text-align: center;
+    color: $text-muted;
+    padding: 16px 24px;
+    font-size: 13px;
+    background: transparent;
+  }
+}

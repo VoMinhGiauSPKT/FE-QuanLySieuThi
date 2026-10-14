@@ -1,9 +1,9 @@
 import { createBrowserRouter } from 'react-router-dom'
-import LoginContainer from '../modules/containers/login'
-import AdminContainer from '../modules/containers/admin'
-import CashierContainer from '../modules/containers/cashier'
-import InventoryContainer from '../modules/containers/inventory'
-import FeedbackContainer from '../modules/containers/feedback'
+import LoginPage from '../modules/login/LoginPage'
+import AdminPage from '../modules/admin/AdminPage'
+import CashierPage from '../modules/cashier/CashierPage'
+import InventoryPage from '../modules/inventory/InventoryPage'
+import FeedbackPage from '../modules/feedback/FeedbackPage'
 import ProtectedRoute from './ProtectedRoute'
 import PublicRoute from './PublicRoute'
 import RootRedirect from './RootRedirect'
@@ -13,7 +13,7 @@ const router = createBrowserRouter([
   // Route đánh giá dịch vụ công khai cho khách hàng
   {
     path: '/feedback',
-    element: <FeedbackContainer />,
+    element: <FeedbackPage />,
   },
 
   // Route đăng nhập công khai (Public)
@@ -21,12 +21,12 @@ const router = createBrowserRouter([
     path: '/login',
     element: (
       <PublicRoute>
-        <LoginContainer />
+        <LoginPage />
       </PublicRoute>
     ),
   },
 
-  // Route gốc '/' tự động chuyển hướng thẳng về trang làm việc của chức vụ
+  // Route gốc '/' tự động chuyển hướng thông minh về trang của chức vụ
   {
     path: '/',
     element: <RootRedirect />,
@@ -37,7 +37,7 @@ const router = createBrowserRouter([
     path: '/admin',
     element: (
       <ProtectedRoute allowedRoles={[USER_ROLES.STORE_OWNER]}>
-        <AdminContainer />
+        <AdminPage />
       </ProtectedRoute>
     ),
   },
@@ -47,7 +47,7 @@ const router = createBrowserRouter([
     path: '/cashier',
     element: (
       <ProtectedRoute allowedRoles={[USER_ROLES.CASHIER, USER_ROLES.STORE_OWNER]}>
-        <CashierContainer />
+        <CashierPage />
       </ProtectedRoute>
     ),
   },
@@ -57,12 +57,12 @@ const router = createBrowserRouter([
     path: '/inventory',
     element: (
       <ProtectedRoute allowedRoles={[USER_ROLES.INVENTORY_MANAGER, USER_ROLES.STORE_OWNER]}>
-        <InventoryContainer />
+        <InventoryPage />
       </ProtectedRoute>
     ),
   },
 
-  // Wildcard fallback: Người dùng gõ link lạ bất kỳ -> tự động điều hướng thông minh về trang chức vụ (nếu đã login) hoặc về /login (nếu chưa login)
+  // Wildcard fallback
   {
     path: '*',
     element: <RootRedirect />,

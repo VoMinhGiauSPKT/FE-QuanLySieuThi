@@ -1,0 +1,28 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.admin-page {
+  &__header {
+    margin-bottom: 16px;
+
+    .page-title {
+      margin: 0 !important;
+      color: $bg-header !important;
+      @include flex-center;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+
+    .title-icon {
+      color: $primary-color;
+      font-size: 26px;
+    }
+  }
+
+  &__tabs {
+    background: #ffffff !important;
+    padding: 16px 20px !important;
+    border-radius: $border-radius-lg !important;
+    box-shadow: $shadow-base !important;
+  }
+}

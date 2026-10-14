@@ -1,0 +1,26 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.stock-overview-view {
+  &__stat-card {
+    border-radius: $border-radius-lg !important;
+    box-shadow: $shadow-card !important;
+
+    &--blue {
+      border-top: 4px solid $primary-color !important;
+    }
+
+    &--red {
+      border-top: 4px solid $danger-color !important;
+    }
+
+    &--green {
+      border-top: 4px solid $success-color !important;
+    }
+  }
+
+  &__table-card {
+    border-radius: $border-radius-lg !important;
+    box-shadow: $shadow-card !important;
+  }
+}

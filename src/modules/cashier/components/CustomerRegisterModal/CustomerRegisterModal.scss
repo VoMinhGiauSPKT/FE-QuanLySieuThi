@@ -1,0 +1,9 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.customer-register-modal {
+  &__actions {
+    text-align: right;
+    margin-top: 16px;
+  }
+}

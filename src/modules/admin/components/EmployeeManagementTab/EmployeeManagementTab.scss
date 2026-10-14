@@ -1,0 +1,14 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.employee-management-tab {
+  border-radius: $border-radius-lg !important;
+  box-shadow: $shadow-card !important;
+
+  &__filters {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}

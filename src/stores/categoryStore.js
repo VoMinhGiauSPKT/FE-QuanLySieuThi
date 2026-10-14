@@ -8,12 +8,13 @@ import {
   deleteCategory,
 } from '../services/categoryService'
 import { extractArray } from '../utils/apiHelper'
+import { DEFAULT_CATEGORIES } from '../constants/categories'
 
 export const useCategoryStore = create((set, get) => ({
-  categories: [],
-  allCategories: [],
+  categories: DEFAULT_CATEGORIES,
+  allCategories: DEFAULT_CATEGORIES,
   loading: false,
-  pagination: { current: 1, pageSize: 8, total: 0 },
+  pagination: { current: 1, pageSize: 8, total: DEFAULT_CATEGORIES.length },
   keyword: '',
 
   // Lấy danh sách loại sản phẩm có phân trang & tìm kiếm
@@ -23,18 +24,20 @@ export const useCategoryStore = create((set, get) => ({
       const res = await getCategories({ page, limit: pageSize, keyword })
       const list = extractArray(res)
       const meta = res?.data?.meta || res?.data?.data?.meta || {}
+      const finalList = list && list.length > 0 ? list : DEFAULT_CATEGORIES
       set({
-        categories: list,
+        categories: finalList,
         pagination: {
           current: page,
           pageSize,
-          total: meta.total ?? list.length,
+          total: meta.total ?? finalList.length,
         },
       })
-      return list
+      return finalList
     } catch (err) {
-      message.error(err?.message || 'Không thể tải danh sách loại sản phẩm!')
-      return []
+      console.warn('Lỗi tải loại sản phẩm (dùng danh mục mặc định):', err?.message)
+      set({ categories: DEFAULT_CATEGORIES })
+      return DEFAULT_CATEGORIES
     } finally {
       set({ loading: false })
     }
@@ -45,11 +48,13 @@ export const useCategoryStore = create((set, get) => ({
     try {
       const res = await getAllCategories()
       const list = extractArray(res)
-      set({ allCategories: list })
-      return list
+      const finalList = list && list.length > 0 ? list : DEFAULT_CATEGORIES
+      set({ allCategories: finalList })
+      return finalList
     } catch (err) {
-      console.error('Lỗi khi tải toàn bộ danh mục:', err)
-      return []
+      console.warn('Lỗi tải toàn bộ danh mục (dùng danh mục mặc định):', err?.message)
+      set({ allCategories: DEFAULT_CATEGORIES })
+      return DEFAULT_CATEGORIES
     }
   },
 

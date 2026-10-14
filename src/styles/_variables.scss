@@ -1,0 +1,55 @@
+// Design Tokens & SCSS Variables (Harmonized with Ant Design)
+
+// Brand & State Colors
+$primary-color: #1890ff;
+$primary-hover: #40a9ff;
+$primary-active: #096dd9;
+$primary-bg: #e6f7ff;
+
+$success-color: #52c41a;
+$warning-color: #faad14;
+$danger-color: #ff4d4f;
+$info-color: #1890ff;
+
+// Neutral Colors
+$text-title: #0f172a;
+$text-primary: #1e293b;
+$text-secondary: #64748b;
+$text-muted: #94a3b8;
+$text-disabled: #cbd5e1;
+
+// Background Colors
+$bg-body: #f8fafc;
+$bg-card: #ffffff;
+$bg-header: #001529;
+$bg-hover: #f1f5f9;
+$bg-light: #f8fafc;
+
+// Borders & Dividers
+$border-color-base: #e2e8f0;
+$border-color-split: #edf2f7;
+$border-color-light: #f1f5f9;
+
+// Border Radii
+$border-radius-sm: 6px;
+$border-radius-base: 8px;
+$border-radius-md: 10px;
+$border-radius-lg: 12px;
+$border-radius-xl: 16px;
+
+// Box Shadows
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+$shadow-base: 0 2px 8px rgba(0, 0, 0, 0.06);
+$shadow-card: 0 4px 16px rgba(0, 0, 0, 0.06);
+$shadow-modal: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+// Spacing Tokens
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// Transitions
+$transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+$transition-fast: all 0.15s ease-in-out;

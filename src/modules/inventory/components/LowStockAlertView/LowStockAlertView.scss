@@ -1,0 +1,14 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.low-stock-alert-view {
+  &__alert {
+    margin-bottom: 20px;
+    border-radius: $border-radius-md;
+  }
+
+  &__card {
+    border-radius: $border-radius-lg !important;
+    box-shadow: $shadow-card !important;
+  }
+}

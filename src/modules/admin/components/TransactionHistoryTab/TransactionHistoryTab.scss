@@ -1,0 +1,7 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.transaction-history-tab {
+  border-radius: $border-radius-lg !important;
+  box-shadow: $shadow-card !important;
+}

@@ -1,0 +1,46 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.payment-process-modal {
+  &__header {
+    text-align: center;
+    margin: 16px 0 24px 0;
+
+    .total-title {
+      margin: 4px 0 !important;
+      color: $success-color !important;
+      font-weight: 700 !important;
+    }
+  }
+
+  &__methods {
+    margin-bottom: 20px;
+  }
+
+  &__method-group {
+    width: 100%;
+    display: flex;
+
+    .ant-radio-button-wrapper {
+      flex: 1;
+      text-align: center;
+    }
+  }
+
+  &__card {
+    border-radius: $border-radius-base !important;
+    background-color: #fafafa !important;
+  }
+
+  &__actions {
+    text-align: right;
+    margin-top: 24px;
+
+    .confirm-btn {
+      border-radius: $border-radius-base !important;
+      background-color: $success-color !important;
+      border-color: $success-color !important;
+      font-weight: 600 !important;
+    }
+  }
+}

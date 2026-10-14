@@ -1,0 +1,60 @@
+@use './variables' as *;
+
+// Flexbox Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// Text Ellipsis
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Custom Smooth Scrollbar
+@mixin custom-scrollbar($width: 6px, $track-bg: #f8fafc, $thumb-bg: #cbd5e1, $thumb-hover: #94a3b8) {
+  &::-webkit-scrollbar {
+    width: $width;
+    height: $width;
+  }
+  &::-webkit-scrollbar-track {
+    background: $track-bg;
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: $thumb-bg;
+    border-radius: 4px;
+    transition: $transition-fast;
+
+    &:hover {
+      background: $thumb-hover;
+    }
+  }
+}
+
+// Responsive Breakpoints
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == 'sm' {
+    @media (max-width: 576px) { @content; }
+  } @else if $breakpoint == 'md' {
+    @media (max-width: 768px) { @content; }
+  } @else if $breakpoint == 'lg' {
+    @media (max-width: 992px) { @content; }
+  } @else if $breakpoint == 'xl' {
+    @media (max-width: 1200px) { @content; }
+  }
+}
