@@ -78,4 +78,22 @@ export const useCustomerStore = create((set, get) => ({
       return []
     }
   },
+
+  // Tìm kiếm khách hàng theo số điện thoại
+  searchCustomerByPhone: async (phone) => {
+    try {
+      const res = await getCustomers({ keyword: phone })
+      const list = extractArray(res)
+      if (list && list.length > 0) {
+        const found = list.find((c) => c.phoneNumber === phone) || list[0]
+        return found
+      }
+      message.warning('Không tìm thấy khách hàng với số điện thoại này!')
+      return null
+    } catch (err) {
+      console.error('Lỗi khi tìm kiếm khách hàng:', err)
+      message.error('Lỗi khi tìm kiếm khách hàng!')
+      return null
+    }
+  },
 }))

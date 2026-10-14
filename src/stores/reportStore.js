@@ -196,7 +196,19 @@ export const useReportStore = create((set, get) => ({
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', `bao_cao_${Date.now()}.xlsx`)
+      let downloadName = params.filename
+      if (!downloadName) {
+        if (params.receiptId) {
+          downloadName = `Phieu_Xuat_Huy_${params.receiptId}.xlsx`
+        } else if (params.target === 'huy' || params.target === 'disposal') {
+          downloadName = `Bao_Cao_Xuat_Huy_${Date.now()}.xlsx`
+        } else if (params.target === 'revenue' || params.target === 'doanh-thu') {
+          downloadName = `Bao_Cao_Doanh_Thu_${Date.now()}.xlsx`
+        } else {
+          downloadName = `Bao_Cao_${Date.now()}.xlsx`
+        }
+      }
+      link.setAttribute('download', downloadName)
       document.body.appendChild(link)
       link.click()
       link.remove()

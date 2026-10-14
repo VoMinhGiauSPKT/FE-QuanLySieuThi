@@ -21,6 +21,7 @@ export default function FeedbackPage() {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const currentRating = Form.useWatch('rating', form) || 5
 
   const handleFinish = async (values) => {
     setLoading(true)
@@ -73,11 +74,6 @@ export default function FeedbackPage() {
               <Button type="primary" key="again" onClick={handleReset} style={{ borderRadius: 8 }}>
                 Gửi Đánh Giá Khác
               </Button>,
-              <Link to="/login" key="login">
-                <Button key="back" style={{ borderRadius: 8 }}>
-                  Trang Đăng Nhập Nội Bộ
-                </Button>
-              </Link>,
             ]}
           />
         ) : (
@@ -92,14 +88,18 @@ export default function FeedbackPage() {
               name="rating"
               label={<Text strong>Mức độ hài lòng của bạn</Text>}
               rules={[{ required: true, message: 'Vui lòng chọn số sao đánh giá!' }]}
+              className="feedback-page__rate-box"
               style={{ textAlign: 'center', marginBottom: 20 }}
+              extra={
+                <div style={{ marginTop: 8, fontSize: 14, color: '#f59e0b', fontWeight: 600 }}>
+                  {desc[Math.max(0, Math.min(4, (currentRating || 5) - 1))]} ({currentRating || 5} sao)
+                </div>
+              }
             >
-              <div className="feedback-page__rate-box">
-                <Rate
-                  tooltips={desc}
-                  character={<HeartFilled />}
-                />
-              </div>
+              <Rate
+                tooltips={desc}
+                character={<HeartFilled />}
+              />
             </Form.Item>
 
             <Form.Item
@@ -163,15 +163,6 @@ export default function FeedbackPage() {
                 Gửi Đánh Giá Ngay
               </Button>
             </Form.Item>
-
-            <div className="feedback-page__login-link">
-              <Link to="/login">
-                <Space>
-                  <ArrowLeftOutlined />
-                  <span>Dành cho nhân viên: Đăng nhập hệ thống nội bộ</span>
-                </Space>
-              </Link>
-            </div>
           </Form>
         )}
       </Card>

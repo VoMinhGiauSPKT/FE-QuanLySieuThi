@@ -36,7 +36,13 @@ export default function PaymentProcessModal({
 
   if (!open || !invoiceData) return null
 
-  const totalAmount = invoiceData?.finalTotal || 0
+  const originalAmount = Number(invoiceData?.originalTotal || 0)
+  const discountAmount = Number(invoiceData?.discountAmount || 0)
+  // Bắt buộc lấy tiền sau khi giảm (chiết khấu điểm) để thanh toán
+  const totalAmount = originalAmount > 0
+    ? Math.max(0, originalAmount - discountAmount)
+    : Number(invoiceData?.finalTotal ?? invoiceData?.finalAmount ?? 0)
+
   const isCashEntered = cashGiven !== null && cashGiven !== undefined
   const isCashSufficient = isCashEntered && typeof cashGiven === 'number' && cashGiven >= totalAmount
   const isCashDeficit = isCashEntered && typeof cashGiven === 'number' && cashGiven < totalAmount
@@ -56,6 +62,7 @@ export default function PaymentProcessModal({
     const res = await onProcessPayment({
       invoiceId: invoiceData.invoiceId,
       paymentMethod: methodToSend,
+      amount: totalAmount,
     })
 
     if (res?.paymentUrl) {
@@ -87,16 +94,36 @@ export default function PaymentProcessModal({
       className="payment-process-modal"
     >
       <div className="payment-process-modal__header">
-        <Text type="secondary" style={{ fontSize: 14 }}>
-          Tổng tiền thanh toán
-        </Text>
-        <Title level={2} className="total-title">
-          {formatCurrency(totalAmount)}
-        </Title>
-        {invoiceData?.discountAmount > 0 && (
-          <Text type="danger" style={{ fontSize: 13 }}>
-            (Đã trừ chiết khấu điểm: {formatCurrency(invoiceData.discountAmount)})
-          </Text>
+        {discountAmount > 0 ? (
+          <div style={{ background: '#f8fafc', padding: '14px 18px', borderRadius: 8, marginBottom: 12, border: '1px solid #e2e8f0', textAlign: 'left' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text type="secondary" style={{ fontSize: 13 }}>Tiền hàng ban đầu:</Text>
+              <Text delete type="secondary" style={{ fontSize: 14 }}>{formatCurrency(originalAmount)}</Text>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={{ fontSize: 13, color: '#e11d48' }}>Chiết khấu điểm tích lũy:</Text>
+              <Text strong style={{ fontSize: 14, color: '#e11d48' }}>-{formatCurrency(discountAmount)}</Text>
+            </div>
+            <Divider style={{ margin: '8px 0' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <Text strong style={{ fontSize: 15, color: '#0f172a' }}>Số tiền thanh toán:</Text>
+                <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 500 }}>(Đã áp dụng giảm giá điểm)</div>
+              </div>
+              <Title level={2} className="total-title" style={{ margin: 0, color: '#16a34a' }}>
+                {formatCurrency(totalAmount)}
+              </Title>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Text type="secondary" style={{ fontSize: 14 }}>
+              Tổng tiền thanh toán
+            </Text>
+            <Title level={2} className="total-title">
+              {formatCurrency(totalAmount)}
+            </Title>
+          </>
         )}
       </div>
 
@@ -218,6 +245,15 @@ export default function PaymentProcessModal({
             <Title level={4} style={{ margin: '0 0 8px 0', color: '#005baa' }}>
               Cổng Thanh Toán Trực Tuyến VNPay Sandbox
             </Title>
+            <div style={{ background: '#eff6ff', padding: '10px 14px', borderRadius: 6, margin: '12px 0 16px', border: '1px solid #bfdbfe' }}>
+              <Text style={{ fontSize: 13, color: '#1e40af' }}>Số tiền thanh toán qua VNPay: </Text>
+              <Text strong style={{ fontSize: 17, color: '#1d4ed8' }}>{formatCurrency(totalAmount)}</Text>
+              {discountAmount > 0 && (
+                <div style={{ fontSize: 12, color: '#059669', marginTop: 2 }}>
+                  (Đã áp dụng giảm {formatCurrency(discountAmount)} từ điểm tích lũy)
+                </div>
+              )}
+            </div>
             <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
               Bấm nút <strong>"Chuyển Đến Cổng Thanh Toán VNPay"</strong> bên dưới. Hệ thống sẽ kết nối trực tiếp đến cổng VNPay Sandbox để khách quét mã QR hoặc chọn ngân hàng thanh toán.
             </Text>

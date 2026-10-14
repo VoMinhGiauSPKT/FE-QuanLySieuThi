@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Tabs, Typography } from 'antd'
 import {
   DashboardOutlined,
+  BarChartOutlined,
   TeamOutlined,
   ShopOutlined,
   AppstoreOutlined,
@@ -31,7 +32,7 @@ export default function AdminPage() {
       key: 'overview',
       label: (
         <span>
-          <DashboardOutlined /> Tổng Quan Hoạt Động
+          <BarChartOutlined /> Báo Cáo Doanh Thu
         </span>
       ),
       children: <OverviewTab onNavigateTab={setActiveTab} />,

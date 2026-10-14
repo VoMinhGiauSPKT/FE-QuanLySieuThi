@@ -148,6 +148,8 @@ export default function POSSaleView({ onStartCheckout, onOpenRegisterModal, isCr
       const foundCust = await searchCustomerByPhone(customerPhoneInput.trim())
       if (foundCust) {
         setCustomer(foundCust)
+        setShowCustomerBar(false)
+        setCustomerPhoneInput('')
       }
     } finally {
       setSearchingCustomer(false)
@@ -170,7 +172,7 @@ export default function POSSaleView({ onStartCheckout, onOpenRegisterModal, isCr
                 {customer.fullName} ({customer.phoneNumber})
               </Text>
               <Tag color="gold" style={{ marginRight: 0 }}>
-                <TrophyOutlined /> {customer.points || 0} điểm
+                <TrophyOutlined /> {(customer.loyaltyPoints ?? customer.points ?? 0).toLocaleString()} điểm
               </Tag>
               <Button
                 type="text"
@@ -359,16 +361,45 @@ export default function POSSaleView({ onStartCheckout, onOpenRegisterModal, isCr
       </div>
 
       {/* Tùy chọn sử dụng điểm tích lũy */}
-      {customer && (customer.points || 0) > 0 && cartItems.length > 0 && (
-        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-          <Checkbox
-            checked={usePoints}
-            onChange={(e) => setUsePoints(e.target.checked)}
-          >
-            <Text style={{ fontSize: 14 }}>
-              Dùng điểm thưởng ({customer.points} điểm = {formatCurrency(customer.points * 1000)})
+      {customer && cartItems.length > 0 && (
+        <div style={{
+          marginBottom: 16,
+          padding: '12px 16px',
+          background: '#f8fafc',
+          borderRadius: 10,
+          border: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}>
+          {(customer.loyaltyPoints ?? customer.points ?? 0) > 0 ? (
+            <>
+              <Checkbox
+                checked={usePoints}
+                onChange={(e) => setUsePoints(e.target.checked)}
+              >
+                <div>
+                  <Text strong style={{ fontSize: 14, color: '#1e293b' }}>
+                    Sử dụng điểm tích lũy (Khách có: {(customer.loyaltyPoints ?? customer.points ?? 0).toLocaleString()} điểm)
+                  </Text>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                    Quy đổi: 1 điểm = 1đ | Tối đa 100.000 điểm ({formatCurrency(Math.min(customer.loyaltyPoints ?? customer.points ?? 0, 100000, summary.subtotal))})
+                  </div>
+                </div>
+              </Checkbox>
+              {usePoints && summary.discount > 0 && (
+                <Tag color="red" style={{ fontWeight: 600, fontSize: 13, padding: '4px 10px', borderRadius: 6 }}>
+                  Giảm: -{formatCurrency(summary.discount)} ({summary.pointsUsed?.toLocaleString() || 0} điểm)
+                </Tag>
+              )}
+            </>
+          ) : (
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              Khách hàng chưa có điểm tích lũy. Đơn hàng này sẽ được tích điểm sau khi thanh toán thành công!
             </Text>
-          </Checkbox>
+          )}
         </div>
       )}
 
@@ -380,8 +411,16 @@ export default function POSSaleView({ onStartCheckout, onOpenRegisterModal, isCr
             <div style={{ marginRight: 16 }}>
               <Text type="secondary" style={{ fontSize: 14 }}>Chiết khấu điểm: </Text>
               <Text strong type="danger" style={{ fontSize: 16 }}>
-                -{formatCurrency(summary.discount)}
+                -{formatCurrency(summary.discount)} ({summary.pointsUsed?.toLocaleString() || 0} điểm)
               </Text>
+            </div>
+          )}
+
+          {customer && !usePoints && summary.subtotal >= 10000 && (
+            <div style={{ marginRight: 16 }}>
+              <Tag color="green" style={{ fontSize: 13, padding: '2px 8px' }}>
+                +{(Math.floor(summary.subtotal / 10000) * 100).toLocaleString()} điểm tích lũy
+              </Tag>
             </div>
           )}
 

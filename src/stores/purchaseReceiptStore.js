@@ -5,6 +5,7 @@ import {
   getPurchaseReceiptById,
   createPurchaseReceipt,
 } from '../services/purchaseReceiptService'
+import { exportExcelReport } from '../services/reportService'
 import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
 
 export const usePurchaseReceiptStore = create((set, get) => ({
@@ -74,6 +75,37 @@ export const usePurchaseReceiptStore = create((set, get) => ({
       return false
     } finally {
       set({ creating: false })
+    }
+  },
+
+  // Xuất file Excel phiếu nhập kho (cho 1 phiếu lẻ hoặc toàn bộ danh sách)
+  exportPurchaseExcel: async (params = {}) => {
+    try {
+      const response = await exportExcelReport({
+        target: 'purchase',
+        ...params,
+      })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      let downloadName = params.filename
+      if (!downloadName) {
+        if (params.receiptId) {
+          downloadName = `Phieu_Nhap_Kho_${params.receiptId}.xlsx`
+        } else {
+          downloadName = `Bao_Cao_Phieu_Nhap_${Date.now()}.xlsx`
+        }
+      }
+      link.setAttribute('download', downloadName)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      message.success('Tải file Excel phiếu nhập thành công!')
+      return true
+    } catch (err) {
+      console.error('Lỗi xuất Excel phiếu nhập:', err)
+      message.error(err?.message || 'Lỗi khi xuất file Excel phiếu nhập!')
+      return false
     }
   },
 }))

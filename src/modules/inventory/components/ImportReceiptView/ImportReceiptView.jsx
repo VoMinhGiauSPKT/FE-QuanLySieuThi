@@ -14,6 +14,7 @@ import {
   Select,
   Tag,
   Flex,
+  Tooltip,
   message,
 } from 'antd'
 import {
@@ -22,6 +23,7 @@ import {
   DeleteOutlined,
   ReloadOutlined,
   EyeOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons'
 import { formatCurrency, formatDateTime, formatDate } from '../../../../utils/formatters'
 import { usePurchaseReceiptStore } from '../../../../stores/purchaseReceiptStore'
@@ -31,7 +33,15 @@ import './ImportReceiptView.scss'
 const { Text, Title } = Typography
 
 export default function ImportReceiptView() {
-  const { receipts, loading, creating, fetchReceipts, fetchReceiptDetail, createReceipt } = usePurchaseReceiptStore()
+  const {
+    receipts,
+    loading,
+    creating,
+    fetchReceipts,
+    fetchReceiptDetail,
+    createReceipt,
+    exportPurchaseExcel,
+  } = usePurchaseReceiptStore()
   const { categories, allCategories, fetchAllCategories } = useCategoryStore()
 
   const safeCategories = allCategories.length > 0 ? allCategories : categories
@@ -200,20 +210,39 @@ export default function ImportReceiptView() {
       title: 'Thời Gian Lập',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      width: 170,
       render: (d) => formatDateTime(d),
     },
     {
       title: 'Thao tác',
       key: 'action',
+      width: 170,
+      align: 'center',
       render: (_, record) => (
-        <Button
-          type="default"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewDetail(record)}
-        >
-          Chi Tiết
-        </Button>
+        <Space size="small">
+          <Button
+            type="default"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewDetail(record)}
+          >
+            Chi Tiết
+          </Button>
+          <Tooltip title="Xuất file Excel cho phiếu nhập này">
+            <Button
+              size="small"
+              icon={<FileExcelOutlined style={{ color: '#52c41a' }} />}
+              onClick={() =>
+                exportPurchaseExcel({
+                  receiptId: record.voucherId,
+                  filename: `Phieu_Nhap_Kho_${record.voucherId}.xlsx`,
+                })
+              }
+            >
+              Excel
+            </Button>
+          </Tooltip>
+        </Space>
       ),
     },
   ]
@@ -342,7 +371,7 @@ export default function ImportReceiptView() {
     <Card
       title="Quản Lý Phiếu Nhập Hàng Hóa Vào Kho"
       extra={
-        <Space>
+        <Space wrap>
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -353,6 +382,12 @@ export default function ImportReceiptView() {
             style={{ borderRadius: 8 }}
           >
             Tạo Phiếu Nhập Kho Mới
+          </Button>
+          <Button
+            icon={<FileExcelOutlined style={{ color: '#52c41a' }} />}
+            onClick={() => exportPurchaseExcel()}
+          >
+            Xuất Excel Toàn Bộ
           </Button>
           <Button icon={<ReloadOutlined />} onClick={() => fetchReceipts({ limit: 20 })}>
             Làm Mới
@@ -367,6 +402,7 @@ export default function ImportReceiptView() {
         columns={columns}
         rowKey="voucherId"
         loading={loading}
+        scroll={{ x: 880 }}
         pagination={{ pageSize: 8 }}
       />
 
@@ -410,6 +446,7 @@ export default function ImportReceiptView() {
             columns={itemColumns}
             pagination={false}
             size="small"
+            scroll={{ x: 820 }}
             className="import-receipt-view__batch-table"
           />
 
@@ -449,11 +486,23 @@ export default function ImportReceiptView() {
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={[
+          <Button
+            key="excel"
+            icon={<FileExcelOutlined style={{ color: '#52c41a' }} />}
+            onClick={() =>
+              exportPurchaseExcel({
+                receiptId: selectedReceipt?.voucherId,
+                filename: `Phieu_Nhap_Kho_${selectedReceipt?.voucherId}.xlsx`,
+              })
+            }
+          >
+            Xuất File Excel Phiếu Này
+          </Button>,
           <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)}>
             Đóng
           </Button>,
         ]}
-        width={850}
+        width={900}
       >
         {selectedReceipt && (
           <div>
@@ -533,6 +582,7 @@ export default function ImportReceiptView() {
               rowKey={(r, idx) => r.purchaseDetailId || r.productId || idx}
               pagination={false}
               size="small"
+              scroll={{ x: 750 }}
               loading={detailLoading}
             />
           </div>

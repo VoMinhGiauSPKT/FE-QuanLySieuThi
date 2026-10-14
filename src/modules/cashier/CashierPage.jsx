@@ -30,6 +30,7 @@ export default function CashierPage() {
   const { cartItems, customer, usePoints, clearCart, setCustomer, getSummary } = useCartStore()
   const fetchProducts = useProductStore((state) => state.fetchProducts)
   const createCustomer = useCustomerStore((state) => state.createCustomer)
+  const fetchCustomerById = useCustomerStore((state) => state.fetchCustomerById)
   const createInvoice = useInvoiceStore((state) => state.createInvoice)
   const cancelInvoice = useInvoiceStore((state) => state.cancelInvoice)
   const processPayment = usePaymentStore((state) => state.processPayment)
@@ -121,13 +122,24 @@ export default function CashierPage() {
       }
 
       const res = await createInvoice(payload)
-      const invoiceData = res?.invoiceId ? res : (res?.data?.invoiceId ? res.data : null)
+      const rawData = res?.data?.data || res?.data || res
+      const invoiceData = rawData?.invoiceId ? rawData : (res?.invoiceId ? res : null)
       if (invoiceData) {
         const summary = getSummary()
+        const originalTotal = Number(invoiceData.originalTotal ?? summary.subtotal ?? 0)
+        const discountAmount = Number(
+          invoiceData.discountAmount !== undefined && invoiceData.discountAmount !== null
+            ? invoiceData.discountAmount
+            : (summary.discount || 0)
+        )
+        const finalTotal = Number(
+          invoiceData.finalTotal ?? invoiceData.finalAmount ?? Math.max(0, originalTotal - discountAmount)
+        )
         setPendingInvoice({
           ...invoiceData,
-          finalTotal: invoiceData.finalAmount ?? invoiceData.finalTotal ?? summary.finalTotal,
-          discountAmount: invoiceData.discountAmount ?? summary.discount,
+          originalTotal,
+          discountAmount,
+          finalTotal,
         })
         setIsPaymentModalOpen(true)
       }
@@ -137,13 +149,14 @@ export default function CashierPage() {
   }, [cartItems, customer, usePoints, createInvoice, getSummary])
 
   // Xử lý xác nhận thanh toán
-  const handleProcessPayment = async ({ invoiceId, paymentMethod }) => {
+  const handleProcessPayment = async ({ invoiceId, paymentMethod, amount }) => {
     setIsProcessingPayment(true)
     try {
+      const finalAmount = amount ?? pendingInvoice?.finalTotal ?? 0
       const res = await processPayment({
         invoiceId,
         paymentMethod,
-        amount: pendingInvoice?.finalTotal,
+        amount: finalAmount,
       })
 
       const paymentUrl = res?.paymentUrl || res?.data?.paymentUrl
@@ -172,6 +185,12 @@ export default function CashierPage() {
       try {
         await cancelInvoice(pendingInvoice.invoiceId)
         await fetchProducts({ limit: 100 })
+        if (customer?.customerId) {
+          const updated = await fetchCustomerById(customer.customerId)
+          if (updated) {
+            setCustomer(updated)
+          }
+        }
       } finally {
         setIsCancelingInvoice(false)
       }

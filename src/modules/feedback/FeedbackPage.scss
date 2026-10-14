@@ -42,6 +42,15 @@
     padding: 8px 0;
     text-align: center;
 
+    .ant-form-item-control-input-content {
+      display: flex;
+      justify-content: center;
+    }
+
+    .ant-form-item-extra {
+      text-align: center;
+    }
+
     .ant-rate {
       font-size: 32px;
       color: $warning-color;

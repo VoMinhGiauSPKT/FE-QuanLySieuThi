@@ -4,33 +4,298 @@
 .overview-tab {
   &__alert {
     margin-bottom: 20px;
-    border-radius: $border-radius-md;
+    border-radius: $border-radius-base;
   }
 
+  // HAI THẺ GIỮ LẠI THEO ẢNH NGƯỜI DÙNG CUNG CẤP
   &__stat-card {
-    border-radius: $border-radius-lg !important;
-    box-shadow: $shadow-card !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    background: #ffffff !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 
-    &--green {
-      border-top: 4px solid $success-color !important;
-    }
-
-    &--blue {
-      border-top: 4px solid $primary-color !important;
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
     }
 
     &--red {
-      border-top: 4px solid $danger-color !important;
+      border-top: 4px solid #ef4444 !important;
     }
 
     &--gold {
-      border-top: 4px solid $warning-color !important;
+      border-top: 4px solid #f59e0b !important;
+    }
+
+    .stat-card-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .stat-card-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .stat-card-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .stat-card-number {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1.2;
+
+      &--red {
+        color: #b91c1c;
+      }
+
+      &--gold {
+        color: #b45309;
+      }
+    }
+
+    .stat-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #f1f5f9;
+      padding-top: 8px;
+      margin-top: 4px;
     }
   }
 
+  // THANH CÔNG CỤ BỘ LỌC DOANH THU
+  &__filter-card {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    margin-bottom: 20px;
+    background: #ffffff;
+
+    .filter-card-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .heading-icon {
+        font-size: 24px;
+        color: #2563eb;
+        background: #eff6ff;
+        padding: 8px;
+        border-radius: 8px;
+      }
+    }
+
+    .export-excel-btn {
+      background-color: #16a34a !important;
+      border-color: #16a34a !important;
+
+      &:hover {
+        background-color: #15803d !important;
+        border-color: #15803d !important;
+      }
+    }
+  }
+
+  // KHỐI CHỈ SỐ DOANH THU & TÀI CHÍNH
+  &__metric-card {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    background: #ffffff;
+    height: 100%;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .metric-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748b;
+    }
+
+    .metric-badge {
+      margin: 10px 0 6px 0;
+    }
+
+    .metric-subtext {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    &.metric-card--green {
+      border-left: 4px solid #16a34a;
+    }
+
+    &.metric-card--blue {
+      border-left: 4px solid #2563eb;
+    }
+
+    &.metric-card--orange {
+      border-left: 4px solid #ea580c;
+    }
+
+    &.metric-card--red {
+      border-left: 4px solid #dc2626;
+    }
+  }
+
+  // KHỐI HÌNH THỨC THANH TOÁN
+  &__payment-breakdown-card {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    background: #ffffff;
+
+    .payment-breakdown-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  }
+
+  // BIỂU ĐỒ DIỄN BIẾN DOANH THU THEO MỐC THỜI GIAN
+  &__chart-card {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    background: #ffffff;
+
+    .timeline-chart-container {
+      overflow-x: auto;
+      padding: 20px 10px 10px 10px;
+
+      &::-webkit-scrollbar {
+        height: 6px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+    }
+
+    .timeline-chart-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 14px;
+      min-width: 600px;
+      height: 240px;
+      padding-bottom: 28px;
+      position: relative;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .chart-bar-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      position: relative;
+      min-width: 32px;
+
+      .bar-track {
+        flex: 1;
+        width: 100%;
+        max-width: 44px;
+        background: #f8fafc;
+        border-radius: 6px 6px 0 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #f1f5f9;
+
+          .bar-fill {
+            filter: brightness(1.1);
+            transform: scaleX(1.05);
+          }
+        }
+      }
+
+      .bar-fill {
+        background: linear-gradient(180deg, #38bdf8 0%, #2563eb 100%);
+        border-radius: 6px 6px 0 0;
+        width: 100%;
+        position: relative;
+        transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 4px;
+      }
+
+      .bar-top-value {
+        font-size: 10px;
+        color: #ffffff;
+        font-weight: 700;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      }
+
+      .bar-label {
+        position: absolute;
+        bottom: -24px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        white-space: nowrap;
+        text-align: center;
+      }
+    }
+  }
+
+  // BẢNG CHI TIẾT GIAO DỊCH DOANH THU
+  &__table-card {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    background: #ffffff;
+    overflow: hidden;
+
+    .ant-table-thead > tr > th {
+      background-color: #f8fafc !important;
+      font-weight: 600 !important;
+      color: #334155 !important;
+    }
+  }
+
+  // LỐI TẮT PHÂN HỆ LÀM VIỆC NHANH
   &__quick-card {
-    border-radius: $border-radius-lg !important;
-    box-shadow: $shadow-card !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
     margin-bottom: 24px;
+    background: #ffffff;
+
+    .quick-action-btn {
+      height: 56px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+    }
   }
 }

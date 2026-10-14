@@ -90,17 +90,21 @@ export const useCartStore = create((set, get) => ({
     const subtotal = cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
     
     let discount = 0
-    if (customer && usePoints && customer.loyaltyPoints > 0) {
-      // Giả sử 1 điểm = 100 VNĐ, tối đa 50% hóa đơn theo API doc
-      const maxDiscount = subtotal * 0.5
-      const pointDiscount = customer.loyaltyPoints * 100
-      discount = Math.min(pointDiscount, maxDiscount)
+    let pointsUsed = 0
+    const customerPoints = customer ? (customer.loyaltyPoints ?? customer.points ?? 0) : 0
+    if (customer && usePoints && customerPoints > 0 && subtotal > 0) {
+      // Mỗi 1 điểm là 1 đồng được giảm, tối đa chỉ được dùng 100,000 điểm cho một hóa đơn
+      const maxAllowed = 100000
+      const canUse = Math.min(customerPoints, maxAllowed)
+      pointsUsed = Math.min(canUse, subtotal)
+      discount = pointsUsed
     }
 
     const finalTotal = Math.max(0, subtotal - discount)
     return {
       subtotal,
       discount,
+      pointsUsed,
       finalTotal,
       itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
     }

@@ -4,12 +4,14 @@ import {
   InboxOutlined,
   FileDoneOutlined,
   DiffOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
 import { DefaultLayout } from '../../layouts'
 import { useAuthStore } from '../../stores/authStore'
 import StockOverviewView from './components/StockOverviewView/StockOverviewView'
 import ImportReceiptView from './components/ImportReceiptView/ImportReceiptView'
 import DiscrepancyReportView from './components/DiscrepancyReportView/DiscrepancyReportView'
+import StockDisposalView from './components/StockDisposalView/StockDisposalView'
 import './InventoryPage.scss'
 
 const { Title, Text } = Typography
@@ -45,6 +47,15 @@ export default function InventoryPage() {
         </span>
       ),
       children: <DiscrepancyReportView />,
+    },
+    {
+      key: 'disposal',
+      label: (
+        <span>
+          <DeleteOutlined style={{ color: '#ff4d4f' }} /> Phiếu Hủy Hàng
+        </span>
+      ),
+      children: <StockDisposalView />,
     },
   ]
 

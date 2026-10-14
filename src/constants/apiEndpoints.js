@@ -29,6 +29,10 @@ export const API_ENDPOINTS = {
     BASE: '/purchase-receipt',
     DETAIL: (id) => `/purchase-receipt/${id}`,
   },
+  DISPOSAL_RECEIPT: {
+    BASE: '/disposal-receipt',
+    DETAIL: (id) => `/disposal-receipt/${id}`,
+  },
   INVOICE: {
     BASE: '/invoice',
     DETAIL: (id) => `/invoice/${id}`,

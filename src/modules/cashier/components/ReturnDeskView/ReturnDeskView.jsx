@@ -14,6 +14,7 @@ import {
   Descriptions,
   Modal,
   Spin,
+  message,
 } from 'antd'
 import {
   SearchOutlined,
@@ -29,10 +30,19 @@ import './ReturnDeskView.scss'
 
 const { Title, Text } = Typography
 
+const COMMON_REASONS = [
+  'Hàng bị lỗi / hỏng hóc',
+  'Sản phẩm cận date / hết hạn',
+  'Bao bì rách / móp méo',
+  'Sai quy cách / giao nhầm',
+  'Khách đổi ý không còn nhu cầu',
+]
+
 export default function ReturnDeskView() {
   const {
     returnReceipts,
     loading: loadingReturn,
+    creating,
     detailLoading,
     fetchReturnReceipts,
     fetchReturnReceiptById,
@@ -71,8 +81,13 @@ export default function ReturnDeskView() {
 
   // Tính tổng tiền hoàn lại
   const itemsToReturn = invoiceDetail?.items?.filter(
-    (item) => selectedReturns[item.productId] > 0
+    (item) => (selectedReturns[item.productId] || 0) > 0
   ) || []
+
+  const totalReturnItemsCount = itemsToReturn.reduce(
+    (sum, item) => sum + (selectedReturns[item.productId] || 0),
+    0
+  )
 
   const totalRefund = itemsToReturn.reduce(
     (sum, item) => sum + item.unitPrice * (selectedReturns[item.productId] || 0),
@@ -80,12 +95,20 @@ export default function ReturnDeskView() {
   )
 
   const handleConfirmReturn = async () => {
-    if (!invoiceDetail?.invoiceId || itemsToReturn.length === 0) return
+    if (!invoiceDetail?.invoiceId) return
+    if (itemsToReturn.length === 0) {
+      message.warning('Vui lòng chọn số lượng ít nhất 1 sản phẩm muốn trả!')
+      return
+    }
+    if (!returnReason.trim()) {
+      message.warning('Vui lòng nhập lý do đổi trả hàng trước khi xác nhận!')
+      return
+    }
     // Schema BE: Module 9, invoiceId, reason, items: [{ productId, returnedQuantity }]
     // Không truyền returnReceiptId vì mã tự sinh
     const payload = {
       invoiceId: invoiceDetail.invoiceId,
-      reason: returnReason || 'Khách đổi trả tại quầy',
+      reason: returnReason.trim(),
       items: itemsToReturn.map((item) => ({
         productId: item.productId,
         returnedQuantity: selectedReturns[item.productId],
@@ -279,41 +302,93 @@ export default function ReturnDeskView() {
             size="small"
           />
 
-          {itemsToReturn.length > 0 && (
-            <div className="return-desk-view__refund-box">
-              <div>
-                <Text strong style={{ fontSize: 15, display: 'block' }}>
-                  Lý do đổi trả:
+          {/* Khối nhập lý do và xác nhận trả hàng */}
+          <div style={{ marginTop: 20, background: '#ffffff', padding: '16px 20px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                <Text strong style={{ fontSize: 15, color: '#1e293b' }}>
+                  Lý do đổi trả hàng: <span style={{ color: '#ff4d4f' }}>*</span>
                 </Text>
-                <Input
-                  placeholder="Ví dụ: Hàng lỗi, bao bì rách, khách đổi ý..."
-                  value={returnReason}
-                  onChange={(e) => setReturnReason(e.target.value)}
-                  style={{ width: 320, marginTop: 4 }}
-                />
+                <Space size="small" wrap>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Chọn nhanh:</Text>
+                  {COMMON_REASONS.map((r) => (
+                    <Tag.CheckableTag
+                      key={r}
+                      checked={returnReason === r}
+                      onChange={(checked) => setReturnReason(checked ? r : '')}
+                      style={{ borderRadius: 12, padding: '2px 10px', fontSize: 12 }}
+                    >
+                      {r}
+                    </Tag.CheckableTag>
+                  ))}
+                </Space>
               </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
-                  Tổng tiền hoàn lại cho khách:
-                </Text>
-                <Title level={3} style={{ margin: '4px 0', color: '#ff4d4f' }}>
-                  -{formatCurrency(totalRefund)}
-                </Title>
+              <Input.TextArea
+                rows={2}
+                placeholder="Nhập lý do đổi trả hàng chi tiết tại đây (Ví dụ: Sản phẩm bị rách bao bì, cận hạn sử dụng, khách đổi ý...)"
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+                maxLength={300}
+                showCount
+                style={{ borderRadius: 6 }}
+              />
+            </div>
+
+            <Divider style={{ margin: '14px 0' }} />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+              <div>
+                <Space direction="vertical" size={2}>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    Số lượng mặt hàng chọn trả: <Text strong style={{ color: itemsToReturn.length > 0 ? '#1890ff' : '#64748b' }}>{itemsToReturn.length} loại ({totalReturnItemsCount} sản phẩm)</Text>
+                  </Text>
+                  {itemsToReturn.length === 0 && (
+                    <Text type="warning" style={{ fontSize: 12 }}>
+                      (Vui lòng tăng số lượng muốn trả ở bảng trên)
+                    </Text>
+                  )}
+                </Space>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                <div style={{ textAlign: 'right' }}>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                    Tổng tiền hoàn trả:
+                  </Text>
+                  <Title level={3} style={{ margin: 0, color: totalRefund > 0 ? '#ff4d4f' : '#64748b' }}>
+                    -{formatCurrency(totalRefund)}
+                  </Title>
+                </div>
+
                 <Popconfirm
                   title="Xác nhận tạo phiếu trả hàng?"
-                  description={`Hệ thống sẽ cập nhật lại tồn kho và hoàn trả ${formatCurrency(totalRefund)} cho khách.`}
+                  description={
+                    <div style={{ maxWidth: 280 }}>
+                      <div>Hoàn trả <strong>{formatCurrency(totalRefund)}</strong> cho {itemsToReturn.length} loại sản phẩm.</div>
+                      <div style={{ marginTop: 4, color: '#64748b', fontSize: 12 }}>Lý do: {returnReason.trim() || 'Chưa nhập'}</div>
+                    </div>
+                  }
                   onConfirm={handleConfirmReturn}
                   okText="Xác Nhận"
                   cancelText="Hủy"
+                  disabled={itemsToReturn.length === 0}
                 >
-                  <Button type="primary" danger size="large" icon={<RollbackOutlined />} style={{ borderRadius: 8 }}>
+                  <Button
+                    type="primary"
+                    danger
+                    size="large"
+                    loading={creating}
+                    disabled={itemsToReturn.length === 0}
+                    icon={<RollbackOutlined />}
+                    style={{ borderRadius: 8, height: 44, fontWeight: 600 }}
+                  >
                     Xác Nhận Trả Hàng & Hoàn Tiền
                   </Button>
                 </Popconfirm>
               </div>
             </div>
-          )}
+          </div>
         </Card>
       )}
 
