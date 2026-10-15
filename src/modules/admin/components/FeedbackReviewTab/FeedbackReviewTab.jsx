@@ -43,17 +43,37 @@ export default function FeedbackReviewTab() {
   const [viewingFeedback, setViewingFeedback] = useState(null)
 
   useEffect(() => {
-    fetchFeedbacks(internalRating ? { rating: internalRating } : {})
+    fetchFeedbacks({
+      page: 1,
+      limit: pagination?.pageSize || 8,
+      rating: internalRating || undefined,
+    })
   }, [fetchFeedbacks, internalRating])
 
   const handleRatingChange = (val) => {
     setInternalRating(val)
     setSelectedRating(val)
-    fetchFeedbacks(val ? { rating: val } : {})
+    fetchFeedbacks({
+      page: 1,
+      limit: pagination?.pageSize || 8,
+      rating: val || undefined,
+    })
   }
 
   const handleRefresh = () => {
-    fetchFeedbacks(internalRating ? { rating: internalRating } : {})
+    fetchFeedbacks({
+      page: pagination?.current || 1,
+      limit: pagination?.pageSize || 8,
+      rating: internalRating || undefined,
+    })
+  }
+
+  const handleTableChange = (pag) => {
+    fetchFeedbacks({
+      page: pag.current,
+      limit: pag.pageSize,
+      rating: internalRating || undefined,
+    })
   }
 
   // Bấm xem chi tiết đánh giá: Gọi API GET /api/feedback/:id
@@ -241,10 +261,13 @@ export default function FeedbackReviewTab() {
           loading={loading}
           pagination={{
             current: pagination?.current || 1,
-            pageSize: pagination?.pageSize || 6,
-            total: pagination?.total || feedbacks.length,
+            pageSize: pagination?.pageSize || 8,
+            total: pagination?.total != null ? pagination.total : feedbacks.length,
             showTotal: (t) => `Tổng cộng ${t} đánh giá`,
+            showSizeChanger: true,
+            pageSizeOptions: ['6', '8', '12', '24'],
           }}
+          onChange={handleTableChange}
         />
       </Card>
 

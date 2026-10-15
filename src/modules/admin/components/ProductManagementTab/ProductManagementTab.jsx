@@ -288,8 +288,10 @@ export default function ProductManagementTab() {
         pagination={{
           current: pagination?.current || 1,
           pageSize: pagination?.pageSize || 8,
-          total: pagination?.total || safeProducts.length,
+          total: pagination?.total != null ? pagination.total : safeProducts.length,
           showTotal: (total) => `Tổng cộng ${total} sản phẩm`,
+          showSizeChanger: true,
+          pageSizeOptions: ['8', '16', '24', '50'],
         }}
         onChange={handleTableChange}
       />

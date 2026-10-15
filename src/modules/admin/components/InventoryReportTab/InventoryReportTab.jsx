@@ -225,8 +225,10 @@ export default function InventoryReportTab() {
         pagination={{
           current: pagination?.current || 1,
           pageSize: pagination?.pageSize || 8,
-          total: pagination?.total || reports?.length || 0,
+          total: pagination?.total != null ? pagination.total : (reports?.length || 0),
           showTotal: (total) => `Tổng cộng ${total} biên bản kiểm kê`,
+          showSizeChanger: true,
+          pageSizeOptions: ['8', '16', '24', '50'],
         }}
         onChange={handleTableChange}
       />

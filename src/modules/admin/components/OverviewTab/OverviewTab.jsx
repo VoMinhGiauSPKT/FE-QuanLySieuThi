@@ -651,6 +651,8 @@ export default function OverviewTab({ onNavigateTab }) {
             pagination={{
               pageSize: 10,
               showTotal: (total) => `Tổng cộng ${total} mốc ghi nhận doanh thu`,
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50'],
             }}
             size="middle"
             scroll={{ x: 800 }}

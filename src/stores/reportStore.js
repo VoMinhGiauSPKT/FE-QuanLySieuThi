@@ -7,7 +7,7 @@ import {
   getRevenueReport,
   exportExcelReport,
 } from '../services/reportService'
-import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta, computePaginationTotal } from '../utils/apiHelper'
 
 // Lưu metadata (tiêu đề, ghi chú, lý do lệch) vào localStorage để đảm bảo hiển thị đúng dù BE hoặc mạng có fallback
 const saveLocalAuditMeta = (reportId, payload) => {
@@ -87,12 +87,14 @@ export const useReportStore = create((set, get) => ({
         return item
       })
 
+      const total = computePaginationTotal(meta, enrichedList.length, page, pageSize)
+
       set({
         reports: enrichedList,
         pagination: {
           current: page,
           pageSize,
-          total: meta.totalItems || enrichedList.length,
+          total,
         },
       })
       return enrichedList

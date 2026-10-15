@@ -37,6 +37,7 @@ export default function ImportReceiptView() {
     receipts,
     loading,
     creating,
+    pagination,
     fetchReceipts,
     fetchReceiptDetail,
     createReceipt,
@@ -55,9 +56,13 @@ export default function ImportReceiptView() {
   const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
-    fetchReceipts({ limit: 20 })
+    fetchReceipts(1, 8)
     fetchAllCategories()
   }, [fetchReceipts, fetchAllCategories])
+
+  const handleTableChange = (pag) => {
+    fetchReceipts(pag.current, pag.pageSize)
+  }
 
   const handleViewDetail = async (record) => {
     setSelectedReceipt(record)
@@ -389,7 +394,10 @@ export default function ImportReceiptView() {
           >
             Xuất Excel Toàn Bộ
           </Button>
-          <Button icon={<ReloadOutlined />} onClick={() => fetchReceipts({ limit: 20 })}>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => fetchReceipts(pagination?.current || 1, pagination?.pageSize || 8)}
+          >
             Làm Mới
           </Button>
         </Space>
@@ -403,7 +411,15 @@ export default function ImportReceiptView() {
         rowKey="voucherId"
         loading={loading}
         scroll={{ x: 880 }}
-        pagination={{ pageSize: 8 }}
+        pagination={{
+          current: pagination?.current || 1,
+          pageSize: pagination?.pageSize || 8,
+          total: pagination?.total != null ? pagination.total : safeReceipts.length,
+          showTotal: (total) => `Tổng cộng ${total} phiếu nhập`,
+          showSizeChanger: true,
+          pageSizeOptions: ['8', '16', '24', '50'],
+        }}
+        onChange={handleTableChange}
       />
 
       {/* Modal Tạo Phiếu Nhập */}

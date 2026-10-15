@@ -58,6 +58,7 @@ export default function StockDisposalView() {
     submitting,
     detailLoading,
     selectedReceipt,
+    pagination,
     searchTerm,
     isCreateModalOpen,
     isDetailModalOpen,
@@ -85,9 +86,13 @@ export default function StockDisposalView() {
   const safeReceipts = Array.isArray(receipts) ? receipts : []
 
   useEffect(() => {
-    fetchDisposalReceipts(1, 10)
+    fetchDisposalReceipts(1, 8)
     fetchProducts({ limit: 100 })
   }, [fetchDisposalReceipts, fetchProducts])
+
+  const handleTableChange = (pag) => {
+    fetchDisposalReceipts(pag.current, pag.pageSize)
+  }
 
   // Lọc danh sách phiếu theo từ khóa tìm kiếm
   const filteredReceipts = useMemo(() => {
@@ -420,7 +425,7 @@ export default function StockDisposalView() {
             icon={<ReloadOutlined />}
             size="large"
             onClick={() => {
-              fetchDisposalReceipts(1, 10)
+              fetchDisposalReceipts(pagination?.current || 1, pagination?.pageSize || 8)
               fetchProducts({ limit: 100 })
             }}
           >
@@ -438,10 +443,14 @@ export default function StockDisposalView() {
         loading={loading}
         scroll={{ x: 1050 }}
         pagination={{
-          pageSize: 8,
+          current: pagination?.current || 1,
+          pageSize: pagination?.pageSize || 8,
+          total: pagination?.total != null ? pagination.total : safeReceipts.length,
           showTotal: (total) => `Tổng cộng ${total} phiếu xuất hủy`,
           showSizeChanger: true,
+          pageSizeOptions: ['8', '16', '24', '50'],
         }}
+        onChange={handleTableChange}
       />
 
       {/* Modal Lập Phiếu Hủy Hàng */}
