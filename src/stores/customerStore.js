@@ -6,7 +6,7 @@ import {
   createCustomer,
   getCustomerInvoices,
 } from '../services/customerService'
-import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta, computePaginationTotal } from '../utils/apiHelper'
 
 export const useCustomerStore = create((set, get) => ({
   customers: [],
@@ -19,15 +19,18 @@ export const useCustomerStore = create((set, get) => ({
   fetchCustomers: async (params = {}) => {
     set({ loading: true })
     try {
-      const res = await getCustomers(params)
+      const page = params.page || 1
+      const pageSize = params.limit || params.pageSize || 8
+      const res = await getCustomers({ ...params, page, limit: pageSize })
       const list = extractArray(res)
       const meta = extractMeta(res)
+      const total = computePaginationTotal(meta, list.length, page, pageSize)
       set({
         customers: list,
         pagination: {
-          current: params.page || 1,
-          pageSize: params.limit || 8,
-          total: meta.totalItems || list.length,
+          current: page,
+          pageSize,
+          total,
         },
       })
       return list

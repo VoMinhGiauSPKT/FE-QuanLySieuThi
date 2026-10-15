@@ -215,8 +215,10 @@ export default function TransactionHistoryTab() {
         pagination={{
           current: pagination?.current || 1,
           pageSize: pagination?.pageSize || 8,
-          total: pagination?.total || safeInvoices.length,
+          total: pagination?.total != null ? pagination.total : safeInvoices.length,
           showTotal: (total) => `Tổng cộng ${total} hóa đơn`,
+          showSizeChanger: true,
+          pageSizeOptions: ['8', '16', '24', '50'],
         }}
         onChange={handleTableChange}
       />

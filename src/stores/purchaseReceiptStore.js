@@ -6,7 +6,7 @@ import {
   createPurchaseReceipt,
 } from '../services/purchaseReceiptService'
 import { exportExcelReport } from '../services/reportService'
-import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta, computePaginationTotal } from '../utils/apiHelper'
 
 export const usePurchaseReceiptStore = create((set, get) => ({
   receipts: [],
@@ -16,19 +16,35 @@ export const usePurchaseReceiptStore = create((set, get) => ({
   detailLoading: false,
   pagination: { current: 1, pageSize: 8, total: 0 },
 
-  // Lấy danh sách phiếu nhập hàng
-  fetchReceipts: async (params = {}) => {
+  // Lấy danh sách phiếu nhập hàng (hỗ trợ cả fetchReceipts(page, pageSize, filters) và fetchReceipts({ page, limit, ... }))
+  fetchReceipts: async (arg1 = 1, arg2 = 8, arg3 = {}) => {
+    let page = 1
+    let pageSize = 8
+    let filters = {}
+
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      page = arg1.page || 1
+      pageSize = arg1.limit || arg1.pageSize || 8
+      const { page: _p, limit: _l, pageSize: _ps, ...rest } = arg1
+      filters = rest
+    } else {
+      page = Number(arg1) || 1
+      pageSize = Number(arg2) || 8
+      filters = arg3 || {}
+    }
+
     set({ loading: true })
     try {
-      const res = await getPurchaseReceipts(params)
+      const res = await getPurchaseReceipts({ page, limit: pageSize, ...filters })
       const list = extractArray(res)
       const meta = extractMeta(res)
+      const total = computePaginationTotal(meta, list.length, page, pageSize)
       set({
         receipts: list,
         pagination: {
-          current: params.page || 1,
-          pageSize: params.limit || 8,
-          total: meta.totalItems || list.length,
+          current: page,
+          pageSize,
+          total,
         },
       })
       return list

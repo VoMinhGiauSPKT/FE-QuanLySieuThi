@@ -6,7 +6,7 @@ import {
   updateProduct,
   getLowStockAlerts,
 } from '../services/productService'
-import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta, computePaginationTotal } from '../utils/apiHelper'
 
 export const useProductStore = create((set, get) => ({
   products: [],
@@ -48,12 +48,13 @@ export const useProductStore = create((set, get) => ({
       })
       const list = extractArray(res)
       const meta = extractMeta(res)
+      const total = computePaginationTotal(meta, list.length, page, pageSize)
       set({
         products: list,
         pagination: {
           current: page,
           pageSize,
-          total: meta.totalItems || list.length,
+          total,
         },
       })
       return list

@@ -8,7 +8,7 @@ import {
   updateCategory,
   deleteCategory,
 } from '../services/categoryService'
-import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta, computePaginationTotal } from '../utils/apiHelper'
 
 export const useCategoryStore = create((set, get) => ({
   categories: [],
@@ -26,12 +26,13 @@ export const useCategoryStore = create((set, get) => ({
       const res = await getCategories({ page, limit: pageSize, keyword })
       const list = extractArray(res)
       const meta = extractMeta(res)
+      const total = computePaginationTotal(meta, list.length, page, pageSize)
       set({
         categories: list,
         pagination: {
           current: page,
           pageSize,
-          total: meta.totalItems !== undefined ? meta.totalItems : list.length,
+          total,
         },
       })
       return list

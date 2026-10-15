@@ -200,7 +200,13 @@ export default function CustomerListView({ onOpenRegisterModal, onSelectCustomer
         <Button type="primary" onClick={handleSearch}>
           Tìm Kiếm
         </Button>
-        <Button icon={<ReloadOutlined />} onClick={() => fetchCustomers({ limit: 20 })}>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={() => {
+            setKeyword('')
+            fetchCustomers({ page: 1, limit: pagination?.pageSize || 8 })
+          }}
+        >
           Làm Mới
         </Button>
       </div>
@@ -213,8 +219,10 @@ export default function CustomerListView({ onOpenRegisterModal, onSelectCustomer
         pagination={{
           current: pagination?.current || 1,
           pageSize: pagination?.pageSize || 8,
-          total: pagination?.total || safeCustomers.length,
+          total: pagination?.total != null ? pagination.total : safeCustomers.length,
           showTotal: (t) => `Tổng cộng ${t} hội viên`,
+          showSizeChanger: true,
+          pageSizeOptions: ['8', '16', '24', '50'],
         }}
         onChange={handleTableChange}
       />

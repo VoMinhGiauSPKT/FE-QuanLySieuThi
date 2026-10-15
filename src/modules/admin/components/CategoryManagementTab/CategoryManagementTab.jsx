@@ -211,8 +211,10 @@ export default function CategoryManagementTab() {
         pagination={{
           current: pagination?.current || 1,
           pageSize: pagination?.pageSize || 8,
-          total: pagination?.total || safeCategories.length,
+          total: pagination?.total != null ? pagination.total : safeCategories.length,
           showTotal: (total) => `Tổng cộng ${total} ngành hàng`,
+          showSizeChanger: true,
+          pageSizeOptions: ['8', '16', '24', '50'],
         }}
         onChange={handleTableChange}
       />

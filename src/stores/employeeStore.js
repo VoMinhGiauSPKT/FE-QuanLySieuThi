@@ -7,7 +7,7 @@ import {
   updateEmployee,
   deleteEmployee,
 } from '../services/employeeService'
-import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta, computePaginationTotal } from '../utils/apiHelper'
 
 export const useEmployeeStore = create((set, get) => ({
   employees: [],
@@ -43,12 +43,13 @@ export const useEmployeeStore = create((set, get) => ({
       })
       const list = extractArray(res)
       const meta = extractMeta(res)
+      const total = computePaginationTotal(meta, list.length, page, pageSize)
       set({
         employees: list,
         pagination: {
           current: meta.currentPage || page,
           pageSize: meta.pageSize || pageSize,
-          total: meta.totalItems !== undefined ? meta.totalItems : list.length,
+          total,
         },
       })
       return list

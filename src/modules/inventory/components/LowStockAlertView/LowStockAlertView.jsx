@@ -126,7 +126,12 @@ export default function LowStockAlertView({ onGoToImport }) {
           dataSource={safeLowStockItems}
           rowKey="productId"
           loading={loadingLowStock}
-          pagination={{ pageSize: 8 }}
+          pagination={{
+            pageSize: 8,
+            showTotal: (total) => `Tổng cộng ${total} mặt hàng sắp hết`,
+            showSizeChanger: true,
+            pageSizeOptions: ['8', '16', '24', '50'],
+          }}
         />
       </Card>
     </div>
