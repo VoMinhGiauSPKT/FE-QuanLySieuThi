@@ -5,7 +5,7 @@ import {
   getFeedbackById,
   submitFeedback,
 } from '../services/feedbackService'
-import { extractObject } from '../utils/apiHelper'
+import { extractObject, extractMeta, computePaginationTotal } from '../utils/apiHelper'
 
 export const useFeedbackStore = create((set, get) => ({
   feedbackData: { summary: {}, feedbacks: [] },
@@ -20,14 +20,20 @@ export const useFeedbackStore = create((set, get) => ({
     set({ loading: true })
     try {
       const queryParams = typeof params === 'object' ? params : { rating: params }
-      const res = await getFeedbacks(queryParams)
+      const page = queryParams.page || 1
+      const pageSize = queryParams.limit || queryParams.pageSize || 8
+      const res = await getFeedbacks({ ...queryParams, page, limit: pageSize })
       const data = extractObject(res, { summary: {}, feedbacks: [] })
+      const meta = extractMeta(res)
+      const list = Array.isArray(data.feedbacks) ? data.feedbacks : []
+      const total = computePaginationTotal(meta, list.length, page, pageSize, data.summary?.totalFeedbacks)
+
       set({
         feedbackData: data,
         pagination: {
-          current: queryParams.page || 1,
-          pageSize: queryParams.limit || 8,
-          total: data.summary?.totalFeedbacks || data.feedbacks?.length || 0,
+          current: page,
+          pageSize,
+          total,
         },
       })
       return data

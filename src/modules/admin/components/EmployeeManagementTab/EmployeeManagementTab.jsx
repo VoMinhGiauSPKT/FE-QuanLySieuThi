@@ -300,16 +300,10 @@ export default function EmployeeManagementTab() {
         pagination={{
           current: pagination?.current || 1,
           pageSize: pagination?.pageSize || 10,
-          total: pagination?.total || 0,
-          showSizeChanger: false,
+          total: pagination?.total != null ? pagination.total : safeEmployees.length,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50'],
           showTotal: (total, range) => `${range[0]}-${range[1]} trên tổng số ${total} nhân viên`,
-          onChange: (page, pageSize) => {
-            fetchEmployees(page, pageSize, {
-              keyword: keyword.trim() || undefined,
-              position: selectedRole || undefined,
-              status: selectedStatus !== undefined && selectedStatus !== '' ? selectedStatus : undefined,
-            })
-          },
         }}
         onChange={handleTableChange}
       />

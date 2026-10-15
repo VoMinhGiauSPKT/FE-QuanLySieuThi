@@ -48,3 +48,37 @@ export const extractMeta = (res) => {
     pageSize: Number(meta.limit ?? meta.pageSize ?? 10),
   }
 }
+
+/**
+ * Tính toán tổng số phần tử phân trang (total) cho Ant Design Table:
+ * 1. Nếu Backend có trả về totalItems hợp lệ (> 0), ưu tiên sử dụng luôn.
+ * 2. Nếu fallbackTotal được truyền vào và > 0, sử dụng fallbackTotal.
+ * 3. Nếu Backend không trả total hoặc total = 0:
+ *    - Nếu số phần tử trả về >= pageSize: Chắc chắn còn dữ liệu ở các trang sau -> set total = page * pageSize + 1
+ *      để Ant Design Table kích hoạt nút Next/các số trang tiếp theo.
+ *    - Nếu số phần tử < pageSize: Đây là trang cuối cùng -> chốt tổng số phần tử chính xác = (page - 1) * pageSize + listLength.
+ * @param {Object} meta Metadata trích xuất từ extractMeta
+ * @param {number} listLength Số lượng bản ghi của trang hiện tại
+ * @param {number} page Trang hiện tại (1-indexed)
+ * @param {number} pageSize Kích thước trang
+ * @param {number} [fallbackTotal] Tổng số dự phòng nếu có
+ * @returns {number}
+ */
+export const computePaginationTotal = (meta, listLength = 0, page = 1, pageSize = 8, fallbackTotal = null) => {
+  if (fallbackTotal !== null && fallbackTotal !== undefined && Number(fallbackTotal) > 0) {
+    return Number(fallbackTotal)
+  }
+  const metaTotal = Number(meta?.totalItems || 0)
+  if (metaTotal > 0) {
+    return metaTotal
+  }
+  const safePage = Math.max(1, Number(page) || 1)
+  const safePageSize = Math.max(1, Number(pageSize) || 8)
+  const safeLen = Math.max(0, Number(listLength) || 0)
+
+  if (safeLen >= safePageSize) {
+    return safePage * safePageSize + 1
+  }
+  return Math.max(0, (safePage - 1) * safePageSize + safeLen)
+}
+

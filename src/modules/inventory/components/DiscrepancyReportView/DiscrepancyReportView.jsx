@@ -28,7 +28,7 @@ import './DiscrepancyReportView.scss'
 const { Text } = Typography
 
 export default function DiscrepancyReportView() {
-  const { reports, loading, creating, fetchReports, fetchReportDetail, createReport } = useReportStore()
+  const { reports, loading, creating, pagination, fetchReports, fetchReportDetail, createReport } = useReportStore()
   const { products, fetchProducts } = useProductStore()
 
   const safeProducts = Array.isArray(products) ? products : []
@@ -42,9 +42,13 @@ export default function DiscrepancyReportView() {
   const [auditData, setAuditData] = useState({})
 
   useEffect(() => {
-    fetchReports(1, 20)
+    fetchReports(1, 8)
     fetchProducts({ limit: 50 })
   }, [fetchReports, fetchProducts])
+
+  const handleTableChange = (pag) => {
+    fetchReports(pag.current, pag.pageSize)
+  }
 
   const handleViewReportDetail = async (record) => {
     setSelectedReport(record)
@@ -260,7 +264,10 @@ export default function DiscrepancyReportView() {
           >
             Lập Biên Bản Kiểm Kê Mới
           </Button>
-          <Button icon={<ReloadOutlined />} onClick={() => fetchReports(1, 20)}>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => fetchReports(pagination?.current || 1, pagination?.pageSize || 8)}
+          >
             Làm Mới
           </Button>
         </Space>
@@ -273,7 +280,15 @@ export default function DiscrepancyReportView() {
         columns={columns}
         rowKey="reportId"
         loading={loading}
-        pagination={{ pageSize: 8 }}
+        pagination={{
+          current: pagination?.current || 1,
+          pageSize: pagination?.pageSize || 8,
+          total: pagination?.total != null ? pagination.total : safeReports.length,
+          showTotal: (total) => `Tổng cộng ${total} biên bản kiểm kê`,
+          showSizeChanger: true,
+          pageSizeOptions: ['8', '16', '24', '50'],
+        }}
+        onChange={handleTableChange}
       />
 
       {/* Modal Lập Biên Bản */}

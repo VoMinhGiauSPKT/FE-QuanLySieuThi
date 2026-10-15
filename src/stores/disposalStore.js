@@ -5,8 +5,7 @@ import {
   getDisposalReceipts,
   getDisposalReceiptById,
 } from '../services/disposalReceiptService'
-import { exportExcelReport } from '../services/reportService'
-import { extractArray, extractObject, extractMeta } from '../utils/apiHelper'
+import { extractArray, extractObject, extractMeta, computePaginationTotal } from '../utils/apiHelper'
 import { formatDate } from '../utils/formatters'
 import { useProductStore } from './productStore'
 
@@ -130,8 +129,23 @@ export const useDisposalStore = create((set, get) => ({
     set({ commonReason: newReason, disposalItems: updated })
   },
 
-  // Lấy danh sách phiếu xuất hủy kho từ API GET /api/disposal-receipt
-  fetchDisposalReceipts: async (page = 1, pageSize = 10, filters = {}) => {
+  // Lấy danh sách phiếu xuất hủy kho từ API GET /api/disposal-receipt (hỗ trợ cả (page, pageSize, filters) và ({ page, limit, ... }))
+  fetchDisposalReceipts: async (arg1 = 1, arg2 = 8, arg3 = {}) => {
+    let page = 1
+    let pageSize = 8
+    let filters = {}
+
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      page = arg1.page || 1
+      pageSize = arg1.limit || arg1.pageSize || 8
+      const { page: _p, limit: _l, pageSize: _ps, ...rest } = arg1
+      filters = rest
+    } else {
+      page = Number(arg1) || 1
+      pageSize = Number(arg2) || 8
+      filters = arg3 || {}
+    }
+
     set({ loading: true })
     try {
       const res = await getDisposalReceipts({
@@ -141,13 +155,14 @@ export const useDisposalStore = create((set, get) => ({
       })
       const list = extractArray(res)
       const meta = extractMeta(res)
+      const total = computePaginationTotal(meta, list.length, page, pageSize)
 
       set({
         receipts: list,
         pagination: {
           current: page,
           pageSize,
-          total: meta.totalItems || list.length,
+          total,
         },
       })
       return list

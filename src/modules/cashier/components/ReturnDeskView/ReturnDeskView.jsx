@@ -44,6 +44,7 @@ export default function ReturnDeskView() {
     loading: loadingReturn,
     creating,
     detailLoading,
+    pagination,
     fetchReturnReceipts,
     fetchReturnReceiptById,
     createReturnReceipt,
@@ -60,8 +61,12 @@ export default function ReturnDeskView() {
   const [viewingReceipt, setViewingReceipt] = useState(null)
 
   useEffect(() => {
-    fetchReturnReceipts({ limit: 10 })
+    fetchReturnReceipts(1, 8)
   }, [fetchReturnReceipts])
+
+  const handleTableChange = (pag) => {
+    fetchReturnReceipts(pag.current, pag.pageSize)
+  }
 
   const handleSearch = async () => {
     if (!searchInvoiceId.trim()) return
@@ -407,7 +412,15 @@ export default function ReturnDeskView() {
         rowKey="returnReceiptId"
         loading={loadingReturn}
         size="small"
-        pagination={{ pageSize: 5 }}
+        pagination={{
+          current: pagination?.current || 1,
+          pageSize: pagination?.pageSize || 8,
+          total: pagination?.total != null ? pagination.total : (returnReceipts?.length || 0),
+          showTotal: (total) => `Tổng cộng ${total} phiếu trả hàng`,
+          showSizeChanger: true,
+          pageSizeOptions: ['5', '8', '16', '24'],
+        }}
+        onChange={handleTableChange}
       />
 
       {/* Modal Chi Tiết Phiếu Trả Hàng */}
